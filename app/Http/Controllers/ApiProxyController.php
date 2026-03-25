@@ -32,6 +32,12 @@ class ApiProxyController extends Controller
         return response()->json($api->cedulacionObservaciones($token));
     }
 
+    public function objetivoContactos(Request $request, SentryApiClient $api, int $objetivo)
+    {
+        $token = (string) $request->session()->get('api_token');
+        return response()->json($api->objetivoContactos($token, $objetivo));
+    }
+
     public function guardarCedulacion(Request $request, SentryApiClient $api)
     {
         $token = (string) $request->session()->get('api_token');

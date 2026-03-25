@@ -41,6 +41,7 @@ return [
 
     'stadiamaps' => [
         'key' => env('STADIA_KEY'),
+        'use_basemap' => filter_var(env('MAP_USE_STADIA', false), FILTER_VALIDATE_BOOL),
     ],
 
 ];

@@ -57,6 +57,7 @@ class TileProxyController extends Controller
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_CONNECTTIMEOUT => 8,
             CURLOPT_TIMEOUT => 15,
+            CURLOPT_USERAGENT => 'SentryGuard-TileProxy/1.0',
             CURLOPT_HTTPHEADER => [
                 'Accept: image/avif,image/webp,image/apng,image/png,image/*,*/*;q=0.8',
             ],

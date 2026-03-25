@@ -86,6 +86,14 @@ class SentryApiClient
             ->json();
     }
 
+    public function objetivoContactos(string $token, int $objetivoId): array
+    {
+        return $this->request($token)
+            ->get("/objetivos/contactos/{$objetivoId}")
+            ->throw()
+            ->json();
+    }
+
     /**
      * @param array{eventos:int[],cedulacion_tipo_id:int,observaciones?:?string} $payload
      */

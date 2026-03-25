@@ -24,10 +24,14 @@ class HomeWebController extends Controller
         $cartoProxy = route('x.tiles.carto', ['z' => 0, 'x' => 0, 'y' => '0.png']);
         $stadiaProxy = route('x.tiles.stadia', ['z' => 0, 'x' => 0, 'y' => '0.png']);
 
+        $useStadiaBasemap = (bool) config('services.stadiamaps.use_basemap')
+            && (string) config('services.stadiamaps.key', '') !== '';
+
         return view('inicio', [
             'eventos' => $eventos ?? [],
             'objetivos' => $objetivosData,
             'stadiaKey' => (string) config('services.stadiamaps.key', ''),
+            'useStadiaBasemap' => $useStadiaBasemap,
             'cartoTileTemplate' => str_replace('/0/0/0.png', '/{z}/{x}/{y}.png', $cartoProxy),
             'stadiaTileTemplate' => str_replace('/0/0/0.png', '/{z}/{x}/{y}.png', $stadiaProxy),
         ]);

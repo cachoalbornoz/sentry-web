@@ -11,10 +11,17 @@
         .table-row { border-bottom: 1px solid rgb(30 41 59 / 1); }
         .table-row:hover { background: rgb(2 6 23 / .35); }
         #map { height: 420px; }
-        .modal-backdrop { background: rgba(2,6,23,.7); }
+        /* Backdrop opaco: evita que se vea el mapa detrás a través del overlay */
+        .modal-backdrop { background: rgb(2 6 23); }
         .chip { border: 1px solid rgb(51 65 85 / 1); background: rgb(2 6 23 / .35); }
         /* Si los tiles tardan en cargar, evitamos “fondo vacío” */
         .leaflet-container { background: #0b1220; }
+        /* Aseguramos que el modal siempre quede arriba del mapa (Leaflet tiene panes con z-index propios). */
+        #cedular-modal { z-index: 99999 !important; }
+        #cedular-modal .modal-backdrop { z-index: 99998 !important; background: rgb(2 6 23) !important; }
+        #cedular-panel { z-index: 99999 !important; }
+        /* Mapa por defecto más bajo que el modal */
+        #map { position: relative; z-index: 1; }
         #eventos-scroll { max-height: 420px; overflow-y: auto; }
     </style>
 </head>
@@ -141,10 +148,10 @@
     </div>
 
     {{-- Modal cedulación --}}
-    <div id="cedular-modal" class="hidden fixed inset-0 z-50">
-        <div class="absolute inset-0 modal-backdrop"></div>
-        <div class="relative mx-auto max-w-4xl mt-10 bg-slate-900/95 border border-slate-800 rounded-xl shadow-2xl shadow-black/40 overflow-hidden">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+    <div id="cedular-modal" class="hidden fixed inset-0 z-[4000] p-4">
+        <div class="absolute inset-0 z-[4000] modal-backdrop"></div>
+        <div id="cedular-panel" class="relative z-[4010] mx-auto mt-2 w-full max-w-5xl max-h-[92vh] overflow-auto bg-slate-900 border border-slate-800 rounded-xl shadow-2xl shadow-black">
+            <div id="cedular-header" class="flex items-center justify-between px-5 py-4 border-b border-slate-800">
                 <div>
                     <div class="text-sm text-slate-400">Cedular evento</div>
                     <div class="text-2xl font-semibold" id="cedular-title">—</div>
@@ -159,11 +166,11 @@
             <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-3">
                     <div class="grid grid-cols-2 gap-3">
-                        <div class="rounded-lg bg-blue-600/90 p-4 text-center">
+                        <div class="rounded-lg bg-blue-600 p-4 text-center">
                             <div class="text-2xl font-semibold">911</div>
                             <div class="text-sm">Policía</div>
                         </div>
-                        <div class="rounded-lg bg-red-600/90 p-4 text-center">
+                        <div class="rounded-lg bg-red-600 p-4 text-center">
                             <div class="text-2xl font-semibold">100</div>
                             <div class="text-sm">Bomberos</div>
                         </div>
@@ -171,40 +178,41 @@
 
                     <div class="rounded-lg border border-slate-800 chip p-3">
                         <div class="text-xs text-slate-400 mb-1">Contactos por objetivo</div>
-                        <select id="contactos-objetivo" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm">
+                        <select id="contactos-objetivo" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm">
                             <option value="">—</option>
                         </select>
                         <div id="contactos-empty" class="mt-3 text-slate-300">
                             <div class="text-lg font-medium">No hay contactos</div>
                             <div class="text-sm text-slate-400">No hay contactos cargados para este objetivo.</div>
                         </div>
+                        <div id="contactos-list" class="hidden mt-3 space-y-2 text-sm"></div>
                     </div>
                 </div>
 
                 <div class="space-y-3">
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">Tipo de señal</label>
-                        <select id="cedulacion-tipo" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm">
+                        <select id="cedulacion-tipo" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm">
                             <option value="">Cargando…</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">Observaciones predefinidas</label>
-                        <select id="obs-predef" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm">
+                        <select id="obs-predef" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm">
                             <option value="">Cargando…</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">Observaciones</label>
                         <textarea id="obs-text" rows="5"
-                                  class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400/40"
+                                  class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400/40"
                                   placeholder="Observaciones del evento"></textarea>
                     </div>
                     <div id="cedular-msg" class="hidden text-sm rounded-lg border p-3"></div>
                 </div>
             </div>
 
-            <div class="px-5 py-4 border-t border-slate-800 flex items-center justify-between bg-slate-950/40">
+            <div class="px-5 py-4 border-t border-slate-800 flex items-center justify-between bg-slate-950">
                 <button id="cedular-cancel" class="text-slate-300 hover:text-white underline underline-offset-4">Cancelar</button>
                 <button id="cedular-save" class="rounded-lg bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-500">
                     Guardar cedulación
@@ -217,6 +225,8 @@
         const INITIAL_EVENTOS = @json($eventos);
         const INITIAL_OBJETIVOS = @json($objetivos);
         const STADIA_KEY = @json($stadiaKey);
+        const USE_STADIA_BASEMAP = @json($useStadiaBasemap);
+        const CONTACTOS_ROUTE_TEMPLATE = @json(route('x.objetivos.contactos', ['objetivo' => '__OBJETIVO__']));
 
         const state = {
             eventos: Array.isArray(INITIAL_EVENTOS) ? INITIAL_EVENTOS : [],
@@ -224,6 +234,7 @@
             selected: new Set(),
             cedulacionTipos: null,
             cedulacionObservaciones: null,
+            contactosByObjetivo: {},
         };
 
         function fmtDate(s) {
@@ -233,14 +244,44 @@
 
         function normalizeObjetivo(o) {
             if (!o || typeof o !== 'object') return o;
-            // API /objetivos (Resource) trae ubicacion{latitud,longitud}
-            if (o.ubicacion && typeof o.ubicacion === 'object') return o;
-            // SSE objetivos trae latitud/longitud al tope
-            const lat = (typeof o.latitud === 'number') ? o.latitud : (o.latitud ? Number(o.latitud) : null);
-            const lon = (typeof o.longitud === 'number') ? o.longitud : (o.longitud ? Number(o.longitud) : null);
-            if (Number.isFinite(lat) && Number.isFinite(lon)) {
-                return { ...o, ubicacion: { latitud: lat, longitud: lon } };
+
+            const toNumber = (v) => {
+                if (typeof v === 'number') return v;
+                if (typeof v !== 'string') return null;
+                const n = Number(v.trim().replace(',', '.'));
+                return Number.isFinite(n) ? n : null;
+            };
+
+            const normalizeCoords = (latRaw, lonRaw) => {
+                let lat = toNumber(latRaw);
+                let lon = toNumber(lonRaw);
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+                // Si llegan invertidas (muy comun desde algunas fuentes), corregimos.
+                // Regla: en Argentina la latitud suele estar en [-56,-21] y longitud en [-76,-53].
+                const looksLikeArLon = lon >= -76 && lon <= -53;
+                const looksLikeArLat = lat >= -56 && lat <= -21;
+                const looksSwappedForAr = !looksLikeArLat && !looksLikeArLon
+                    && lat >= -76 && lat <= -53
+                    && lon >= -56 && lon <= -21;
+
+                if (looksSwappedForAr) {
+                    [lat, lon] = [lon, lat];
+                }
+
+                return { latitud: lat, longitud: lon };
+            };
+
+            if (o.ubicacion && typeof o.ubicacion === 'object') {
+                const coords = normalizeCoords(o.ubicacion.latitud, o.ubicacion.longitud);
+                if (coords) return { ...o, ubicacion: coords };
             }
+
+            const coords = normalizeCoords(o.latitud, o.longitud);
+            if (coords) {
+                return { ...o, ubicacion: coords };
+            }
+
             return o;
         }
 
@@ -336,12 +377,13 @@
         // ===== Modal Cedulación =====
         const modal = document.getElementById('cedular-modal');
         const msgBox = document.getElementById('cedular-msg');
+        const cedularPanel = document.getElementById('cedular-panel');
 
         function showMsg(kind, text) {
             msgBox.classList.remove('hidden');
             msgBox.className = 'text-sm rounded-lg border p-3';
-            if (kind === 'ok') msgBox.classList.add('border-emerald-900/50','bg-emerald-950/40','text-emerald-200');
-            else msgBox.classList.add('border-red-900/50','bg-red-950/40','text-red-200');
+            if (kind === 'ok') msgBox.classList.add('border-emerald-900','bg-emerald-950','text-emerald-200');
+            else msgBox.classList.add('border-red-900','bg-red-950','text-red-200');
             msgBox.textContent = text;
         }
 
@@ -370,6 +412,56 @@
             }
         }
 
+        function getEventoObjetivoId(ev) {
+            return Number(
+                ev?.idObjetivo
+                ?? ev?.objetivoId
+                ?? ev?.objetivo_id
+                ?? 0
+            );
+        }
+
+        function getEventoObjetivoNombre(ev) {
+            return String(ev?.objetivo ?? ev?.objetivoNombre ?? ev?.nombreObjetivo ?? `Objetivo ${getEventoObjetivoId(ev)}`);
+        }
+
+        async function fetchContactosByObjetivo(objetivoId) {
+            if (!objetivoId) return [];
+            const cacheKey = String(objetivoId);
+            if (Array.isArray(state.contactosByObjetivo[cacheKey])) {
+                return state.contactosByObjetivo[cacheKey];
+            }
+
+            const url = CONTACTOS_ROUTE_TEMPLATE.replace('__OBJETIVO__', String(objetivoId));
+            const data = await fetch(url).then(r => r.json()).catch(() => ({}));
+            const contactos = Array.isArray(data?.data) ? data.data : [];
+            state.contactosByObjetivo[cacheKey] = contactos;
+            return contactos;
+        }
+
+        function renderContactos(contactos) {
+            const empty = document.getElementById('contactos-empty');
+            const list = document.getElementById('contactos-list');
+
+            if (!Array.isArray(contactos) || contactos.length === 0) {
+                empty.classList.remove('hidden');
+                list.classList.add('hidden');
+                list.innerHTML = '';
+                return;
+            }
+
+            empty.classList.add('hidden');
+            list.classList.remove('hidden');
+            list.innerHTML = contactos.map((c) => {
+                const nombre = c.nombre ?? c.apellido_nombre ?? 'Contacto';
+                const telefono = c.telefono ?? c.celular ?? c.numero ?? '—';
+                return `<div class="rounded border border-slate-700/70 px-3 py-2">
+                    <div class="font-medium text-slate-100">${nombre}</div>
+                    <div class="text-slate-300">${telefono}</div>
+                </div>`;
+            }).join('');
+        }
+
         async function openCedularModal() {
             hideMsg();
             const ids = Array.from(state.selected.values());
@@ -390,10 +482,27 @@
 
             document.getElementById('obs-predef').value = '';
             document.getElementById('obs-text').value = '';
+            const selectedEvents = state.eventos.filter(e => ids.includes(Number(e.idEvento)));
+            const objetivosMap = new Map();
+            for (const e of selectedEvents) {
+                const objetivoId = getEventoObjetivoId(e);
+                if (!objetivoId) continue;
+                if (!objetivosMap.has(objetivoId)) {
+                    objetivosMap.set(objetivoId, getEventoObjetivoNombre(e));
+                }
+            }
 
-            // contactos (solo para “familiaridad”; MVP muestra empty si no hay)
-            document.getElementById('contactos-objetivo').innerHTML = '<option value="">—</option>';
-            document.getElementById('contactos-empty').classList.remove('hidden');
+            const objetivos = Array.from(objetivosMap, ([id, nombre]) => ({ id, nombre }));
+            const objetivoSelect = document.getElementById('contactos-objetivo');
+            populateSelect(objetivoSelect, objetivos, { valueKey: 'id', labelKey: 'nombre', placeholder: 'Seleccionar objetivo' });
+
+            if (objetivos.length > 0) {
+                objetivoSelect.value = String(objetivos[0].id);
+                const contactos = await fetchContactosByObjetivo(objetivos[0].id);
+                renderContactos(contactos);
+            } else {
+                renderContactos([]);
+            }
 
             modal.classList.remove('hidden');
         }
@@ -411,6 +520,12 @@
             if (!id) return;
             const obs = (state.cedulacionObservaciones?.data ?? []).find(o => Number(o.id) === id);
             if (obs?.observacion) document.getElementById('obs-text').value = obs.observacion;
+        });
+
+        document.getElementById('contactos-objetivo').addEventListener('change', async (e) => {
+            const objetivoId = Number(e.target.value || 0);
+            const contactos = await fetchContactosByObjetivo(objetivoId);
+            renderContactos(contactos);
         });
 
         document.getElementById('cedular-save').addEventListener('click', async () => {
@@ -472,6 +587,15 @@
             // Vista inicial: Provincia de Entre Ríos (aprox.)
             map = L.map('map', { zoomControl: true }).setView([-32.06, -59.23], 7);
 
+            // Blindaje de z-index entre tiles y marcadores:
+            // algunos cambios del DOM/tiles pueden terminar “apilando” los panes raro.
+            // Dejamos markerPane arriba de tilePane, pero como el modal tiene z-index muy alto,
+            // el modal seguirá superponiéndose al mapa.
+            const tilePane = map.getPane('tilePane');
+            const markerPane = map.getPane('markerPane');
+            if (tilePane) tilePane.style.zIndex = '200';
+            if (markerPane) markerPane.style.zIndex = '650';
+
             // Tiles same-origin (proxy) para evitar bloqueos del navegador a terceros.
             const cartoTpl = @json($cartoTileTemplate);
             const stadiaTpl = @json($stadiaTileTemplate);
@@ -483,7 +607,8 @@
                 tilesLayer = L.tileLayer(cartoTpl, { maxZoom: 18 }).addTo(map);
             };
 
-            if (STADIA_KEY) {
+            // Carto por defecto (proxy same-origin). Stadia solo con MAP_USE_STADIA + STADIA_KEY reales.
+            if (USE_STADIA_BASEMAP && STADIA_KEY) {
                 tilesLayer = L.tileLayer(stadiaTpl, { maxZoom: 18 });
                 tilesLayer.on('tileerror', () => useCarto());
                 tilesLayer.addTo(map);
@@ -511,7 +636,8 @@
                     className: '',
                     html: `<div style="width:14px;height:14px;border-radius:999px;background:${color};box-shadow:0 0 0 2px rgba(0,0,0,.55), 0 0 14px ${color}55"></div>`,
                 });
-                const marker = L.marker([lat, lon], { icon });
+                // Fuerza el pane para evitar que queden detrás de los tiles.
+                const marker = L.marker([lat, lon], { icon, pane: 'markerPane' });
                 marker.bindPopup(`<div style="color:#0f172a"><b>${obj.nombre ?? obj.descripcion ?? 'Objetivo'}</b><br/>Estado: ${obj.estado ?? ''}</div>`);
                 marker.addTo(markersLayer);
             }
