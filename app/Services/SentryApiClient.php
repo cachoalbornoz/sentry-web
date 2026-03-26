@@ -120,6 +120,9 @@ class SentryApiClient
     public function guardarCedulacion(string $token, array $payload): array
     {
         return $this->request($token)
+            // Cedulación puede procesar lotes grandes; damos más margen que el default.
+            ->connectTimeout(5)
+            ->timeout(60)
             ->post('/cedulacion/guardar', $payload)
             ->throw()
             ->json();

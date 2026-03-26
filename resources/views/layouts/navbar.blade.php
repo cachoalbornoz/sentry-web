@@ -1,6 +1,6 @@
 <header class="w-full bg-[#0d0f14] px-3 py-2.5">
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-3.5">
+        <div class="flex items-center gap-6">
             <img src="{{ asset('isotipo-grises.svg') }}" alt="Sentry" class="h-5 w-auto object-contain opacity-90">
             <span class="h-6 w-px bg-slate-700/80"></span>
             <nav class="flex items-center gap-0.5 text-sm">

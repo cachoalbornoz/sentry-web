@@ -1,58 +1,176 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sentry Web
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Contexto y objetivo
 
-## About Laravel
+`sentry-web` es la nueva interfaz web de SentryGuard construida con Laravel.
+El objetivo es reemplazar de forma progresiva al proyecto `front`, migrando primero
+la funcionalidad existente y luego incorporando nuevas capacidades.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Este proyecto se integra con `api` como backend principal de negocio y seguridad.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Enfoque conceptual y metodológico
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+La evolución principal fue pasar de pantallas aisladas a un enfoque basado en
+plantillas y layout compartido de Laravel Blade.
 
-## Learning Laravel
+### Principios aplicados
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **Layout como shell de aplicación**: barra superior (`layouts/navbar`), panel de
+  perfil lateral (`layouts/profile-sidebar`) y estructura común de contenido. No
+  hay footer global en el layout principal actual.
+- **Vistas por sección**: cada módulo renderiza su contenido dentro del layout vía
+  `@extends` y `@yield`.
+- **Separación web/API**: Laravel web actúa como BFF liviano; la lógica de negocio
+  y persistencia permanece en `api`.
+- **Experiencia reactiva sin SPA pesada**: combinación de Blade + JS/Vite + SSE
+  para mantener la UI ágil y actualizable en tiempo real.
+- **Tema oscuro coherente**: Tailwind en vistas; mapa Leaflet con tiles servidos en
+  same-origin vía proxy para evitar problemas de CORS/clave expuesta en el cliente.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Layouts base actuales
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- `resources/views/layouts/app.blade.php`: shell principal autenticado.
+- `resources/views/layouts/guest.blade.php`: pantallas de acceso (login).
 
-## Agentic Development
+## Arquitectura actual
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### Capa UI (Blade + Vite)
 
-```bash
-composer require laravel/boost --dev
+- Vistas principales:
+  - `resources/views/inicio.blade.php` (dashboard: mapa, eventos, cedulación)
+  - `resources/views/objetivos.blade.php`
+  - `resources/views/dashboard.blade.php` (debug)
+  - `resources/views/auth/login.blade.php`
+- Activos frontend compilados con Vite (`resources/css/app.css`, `resources/js/app.js`).
 
-php artisan boost:install
+### Capa web (controladores y middleware)
+
+- `AuthWebController`: login/logout y manejo de sesión local.
+- `HomeWebController`: carga inicial de dashboard (eventos + objetivos + tiles).
+- `ApiProxyController`: proxy de endpoints funcionales contra `api`.
+- `SseProxyController`: proxy de stream SSE de dashboard.
+- `TileProxyController`: proxy same-origin para tiles de mapa (Carto/Stadia).
+- `EnsureApiToken` middleware: valida token en sesión para rutas protegidas.
+
+### Capa de integración con API
+
+- `SentryApiClient` centraliza llamadas HTTP a `api` (incluye timeouts ajustables
+  en operaciones pesadas como guardar cedulación).
+- Rutas proxy bajo prefijo `/x/*` para desacoplar el navegador del host real de `api`.
+- Manejo de expiración de sesión y fallos de conectividad en endpoints críticos.
+
+## Flujo funcional implementado
+
+### 1) Autenticación
+
+- `GET /login` muestra formulario.
+- `POST /login` autentica contra `api` y guarda:
+  - `api_token`
+  - `api_user`
+  - `api_token_expires_at`
+- Rutas internas protegidas con middleware `api.token`.
+
+### 2) Dashboard
+
+- `GET /` redirige a `GET /dashboard` (nombre de ruta `dashboard`).
+- `GET /dashboard`:
+  - obtiene eventos y objetivos desde `api`,
+  - inicializa mapa y métricas,
+  - habilita actualización en tiempo real vía SSE (`/x/sse/dashboard`).
+
+### 3) Mapa
+
+- Tiles: `GET /x/tiles/carto-dark/...` y, si está habilitado Stadia,
+  `GET /x/tiles/stadia-dark/...` (ver variables `MAP_USE_STADIA` y `STADIA_KEY`).
+
+### 4) Cedulación de eventos
+
+- Selección múltiple de eventos desde el listado.
+- Modal de cedulación con datos del evento/objetivo.
+- Carga de:
+  - tipos de señal (`/x/cedulacion/tipos`)
+  - observaciones predefinidas (`/x/cedulacion/observaciones`)
+  - contactos por objetivo (`/x/objetivos/contactos/{id}`)
+- Guardado por `POST /x/cedulacion/guardar`. El proxy puede **partir el envío en
+  lotes** según `config('services.sentry_api.cedulacion_batch_size')` (variable
+  `SENTRY_CEDULACION_BATCH_SIZE`, por defecto `1`) para reducir timeouts o
+  conflictos en la API ante muchos eventos.
+
+Ejemplo de payload:
+
+```json
+{
+  "eventos": [318, 338],
+  "cedulacion_tipo_id": 1,
+  "observaciones": "cedulado"
+}
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 5) Objetivos
 
-## Contributing
+- Vista modularizada en `GET /objetivos` dentro del layout común.
+- Endpoints auxiliares:
+  - listado (`/x/objetivos`)
+  - detalle (`/x/objetivos/{objetivo}`)
+  - contactos (`/x/objetivos/contactos/{objetivo}`)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Entorno local (Laragon)
 
-## Code of Conduct
+### Hosts recomendados
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Agregar en `C:\Windows\System32\drivers\etc\hosts`:
 
-## Security Vulnerabilities
+```txt
+127.0.0.1 sentry-web.test
+127.0.0.1 api-sentry.test
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### VirtualHosts
 
-## License
+- `sentry-web.test` → `.../sentry-web/public`
+- `api-sentry.test` → `.../api/public`
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Se recomienda mantener los `.conf` de proyecto versionados en
+`sentry-infra/dev/apache/` y cargarlos desde Apache con `IncludeOptional`.
+
+## Variables de entorno clave (`.env`)
+
+Mínimas para operación local:
+
+```env
+APP_URL=http://sentry-web.test
+SENTRY_API_BASE_URL=http://api-sentry.test
+
+# Mapa
+MAP_USE_STADIA=false
+# STADIA_KEY=tu_clave_real
+
+# Opcional: tamaño de lote al enviar cedulación al API (entero >= 1)
+# SENTRY_CEDULACION_BATCH_SIZE=1
+```
+
+Notas:
+
+- `APP_KEY` debe estar seteada (`php artisan key:generate`).
+- Si cambia la configuración de entorno: `php artisan config:clear`.
+
+## Comandos útiles
+
+```bash
+composer install
+npm install
+php artisan key:generate
+php artisan migrate
+npm run dev
+php artisan serve
+```
+
+En entorno Laragon normalmente no se usa `php artisan serve`, ya que Apache resuelve
+el host virtual directamente.
+
+## Roadmap corto
+
+- Consolidar modal de eventos críticos (alineado a producción).
+- Continuar migración funcional de `front` a vistas Blade modulares.
+- Homogeneizar UI/UX entre `front` y `sentry-web` durante la transición.
+- Documentar decisiones de arquitectura por módulo a medida que se migra.

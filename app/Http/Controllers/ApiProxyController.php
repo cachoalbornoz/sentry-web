@@ -149,9 +149,49 @@ class ApiProxyController extends Controller
             'observaciones' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $batchSize = (int) config('services.sentry_api.cedulacion_batch_size', 1);
+        $eventos = array_values($payload['eventos'] ?? []);
+
         try {
-            $result = $api->guardarCedulacion($token, $payload);
-            return response()->json($result);
+            if (count($eventos) <= $batchSize) {
+                $result = $api->guardarCedulacion($token, $payload);
+                return response()->json($result);
+            }
+
+            $chunks = array_chunk($eventos, $batchSize);
+            $messages = [];
+            $created = [];
+            $existentes = [];
+
+            foreach ($chunks as $chunk) {
+                $chunkPayload = $payload;
+                $chunkPayload['eventos'] = $chunk;
+                $partial = $api->guardarCedulacion($token, $chunkPayload);
+
+                if (isset($partial['message']) && is_string($partial['message'])) {
+                    $messages[] = $partial['message'];
+                }
+                if (isset($partial['cedulaciones_creadas']) && is_array($partial['cedulaciones_creadas'])) {
+                    $created = array_merge($created, $partial['cedulaciones_creadas']);
+                }
+                if (isset($partial['cedulaciones_existentes']) && is_array($partial['cedulaciones_existentes'])) {
+                    $existentes = array_merge($existentes, $partial['cedulaciones_existentes']);
+                }
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Cedulación procesada en '.count($chunks).' lote(s).',
+                'message_details' => $messages,
+                'cedulaciones_creadas' => $created,
+                'cedulaciones_existentes' => $existentes,
+            ]);
+        } catch (ConnectionException) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'La API demoró en responder al guardar la cedulación. Intentá nuevamente.',
+                'timeout' => true,
+            ], 504);
         } catch (RequestException $e) {
             $status = $e->response?->status() ?? 500;
             if ($status === 401) {

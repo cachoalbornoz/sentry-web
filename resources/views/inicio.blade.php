@@ -207,7 +207,7 @@
 
                     <div id="eventos-scroll" class="rounded-lg border border-slate-800">
                         <table class="min-w-full text-sm">
-                            <thead class="bg-slate-900/70 text-slate-200">
+                            <thead class="bg-slate-800 text-slate-100 border-b border-slate-600/80">
                                 <tr>
                                     <th class="p-2 w-10 text-left">
                                         <input id="select-all" type="checkbox" class="accent-blue-500"/>
@@ -279,7 +279,7 @@
                 <div class="rounded-lg border border-slate-700 overflow-hidden">
                     <div style="max-height:220px; overflow-y:auto; overflow-x:hidden;">
                         <table class="min-w-full text-sm">
-                            <thead class="bg-slate-700 text-slate-100">
+                            <thead class="bg-slate-800 text-slate-100 border-b border-slate-600/80">
                                 <tr>
                                     <th class="p-2 text-left">#</th>
                                     <th class="p-2 text-left">Tipo de Señal</th>
@@ -346,7 +346,14 @@
             <div class="px-4 py-3 border-t border-slate-800 flex items-center justify-between bg-slate-950/90">
                 <button id="cedular-cancel" class="text-slate-300 hover:text-white underline underline-offset-4">Cancelar</button>
                 <button id="cedular-save" class="rounded-lg bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-500">
-                    Guardar cedulación
+                    <span id="cedular-save-label">Guardar cedulación</span>
+                    <span id="cedular-save-loading" class="hidden items-center gap-2">
+                        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity=".3"></circle>
+                            <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" fill="none"></path>
+                        </svg>
+                        Ocupado...
+                    </span>
                 </button>
             </div>
         </div>
@@ -896,6 +903,20 @@
 
         function hideMsg() { msgBox.classList.add('hidden'); msgBox.textContent=''; }
 
+        function setCedularSaving(isSaving) {
+            const btn = document.getElementById('cedular-save');
+            const label = document.getElementById('cedular-save-label');
+            const loading = document.getElementById('cedular-save-loading');
+            if (!btn || !label || !loading) return;
+
+            btn.disabled = isSaving;
+            btn.classList.toggle('opacity-70', isSaving);
+            btn.classList.toggle('cursor-not-allowed', isSaving);
+            label.classList.toggle('hidden', isSaving);
+            loading.classList.toggle('hidden', !isSaving);
+            loading.classList.toggle('inline-flex', isSaving);
+        }
+
         async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 7000) {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -1125,34 +1146,39 @@
                 return;
             }
 
-            const result = await fetchJsonWithTimeout('{{ route('x.cedulacion.guardar') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': @json(csrf_token()),
-                },
-                body: JSON.stringify({
-                    eventos: ids,
-                    cedulacion_tipo_id: cedulacionTipoId,
-                    observaciones,
-                })
-            }, 9000).catch(() => ({ ok: false, data: null }));
+            setCedularSaving(true);
+            try {
+                const result = await fetchJsonWithTimeout('{{ route('x.cedulacion.guardar') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': @json(csrf_token()),
+                    },
+                    body: JSON.stringify({
+                        eventos: ids,
+                        cedulacion_tipo_id: cedulacionTipoId,
+                        observaciones,
+                    })
+                }, 9000).catch(() => ({ ok: false, data: null }));
 
-            const data = result.data;
-            if (result.ok) {
-                showMsg('ok', data?.message ?? 'Cedulación guardada.');
-                objetivosSeleccionados.forEach((id) => removeCriticalAlertByObjetivoId(id));
-                // refrescar eventos (los cedulados deberían desaparecer)
-                await refreshEventos();
-                state.selected.clear();
-                document.getElementById('select-all').checked = false;
-                renderEventos();
-                setTimeout(() => closeCedularModal(), 600);
-            } else {
-                showMsg('err', data?.message ?? 'No se pudo guardar la cedulación.');
-                // si hubo conflicto, refrescamos igual
-                await refreshEventos();
-                renderEventos();
+                const data = result.data;
+                if (result.ok) {
+                    showMsg('ok', data?.message ?? 'Cedulación guardada.');
+                    objetivosSeleccionados.forEach((id) => removeCriticalAlertByObjetivoId(id));
+                    // refrescar eventos (los cedulados deberían desaparecer)
+                    await refreshEventos();
+                    state.selected.clear();
+                    document.getElementById('select-all').checked = false;
+                    renderEventos();
+                    setTimeout(() => closeCedularModal(), 600);
+                } else {
+                    showMsg('err', data?.message ?? 'No se pudo guardar la cedulación.');
+                    // si hubo conflicto, refrescamos igual
+                    await refreshEventos();
+                    renderEventos();
+                }
+            } finally {
+                setCedularSaving(false);
             }
         });
 
