@@ -24,6 +24,76 @@
         /* Mapa por defecto más bajo que el modal */
         #map { position: relative; z-index: 1; }
         #eventos-scroll { max-height: 420px; overflow-y: auto; }
+        .sort-header-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgb(226 232 240 / 1);
+            font-weight: 500;
+            padding: 2px 0;
+            border-bottom: 1px solid transparent;
+        }
+        .sort-header-btn:hover { color: rgb(248 250 252 / 1); }
+        .sort-header-btn .sort-indicator {
+            color: rgb(100 116 139 / 1);
+            font-size: 11px;
+            line-height: 1;
+        }
+        .sort-header-btn.is-active {
+            color: rgb(191 219 254 / 1);
+            border-bottom-color: rgb(59 130 246 / .7);
+        }
+        .sort-header-btn.is-active .sort-indicator {
+            color: rgb(59 130 246 / 1);
+        }
+        .group-row {
+            background: linear-gradient(90deg, rgb(15 23 42 / .95), rgb(15 23 42 / .65));
+            border-top: 1px solid rgb(51 65 85 / 1);
+            border-bottom: 1px solid rgb(51 65 85 / 1);
+        }
+        .group-row td {
+            padding: 9px 10px;
+            font-size: 12px;
+            color: rgb(148 163 184 / 1);
+            text-transform: uppercase;
+            letter-spacing: .03em;
+        }
+        .group-row-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .group-row-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgb(186 230 253 / .95);
+            font-weight: 600;
+        }
+        .group-toggle-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgb(186 230 253 / .95);
+            font-weight: 600;
+        }
+        .group-toggle-icon {
+            color: rgb(148 163 184 / 1);
+            font-size: 11px;
+            transition: transform .16s ease;
+        }
+        .group-toggle-btn.is-collapsed .group-toggle-icon {
+            transform: rotate(-90deg);
+        }
+        .group-row-count {
+            border: 1px solid rgb(71 85 105 / .85);
+            border-radius: 999px;
+            padding: 1px 8px;
+            color: rgb(203 213 225 / 1);
+            font-size: 11px;
+            text-transform: none;
+        }
         #critical-alerts-stack {
             position: fixed;
             left: 12px;
@@ -39,11 +109,19 @@
             padding-right: 4px;
         }
         .critical-alert-card {
-            border: 1px solid rgb(100 116 139 / 0.45);
-            background: rgb(15 23 42 / 0.94);
-            box-shadow: 0 10px 24px rgb(2 6 23 / 0.45);
+            border: 1px solid rgba(248, 113, 113, 0.28);
+            border-left: 3px solid rgba(248, 113, 113, 0.75);
+            background: rgba(15, 23, 42, 0.96);
+            box-shadow: 0 10px 24px rgb(2 6 23 / 0.45), 0 0 0 1px rgba(239, 68, 68, 0.08) inset;
             border-radius: 12px;
             padding: 10px 12px;
+        }
+        button {
+            cursor: pointer;
+            transition: background-color .18s ease, color .18s ease, border-color .18s ease, filter .18s ease;
+        }
+        button:hover:not(:disabled) {
+            filter: brightness(.82);
         }
     </style>
 </head>
@@ -61,19 +139,46 @@
                 </div>
                 <div class="flex items-center gap-2 md:gap-2.5 text-xs">
                     <span id="topbar-clock" class="font-medium text-slate-200">--:--:--</span>
-                    <span id="api-status-badge" class="inline-flex items-center gap-1.5 rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300">
+                    <span id="api-status-badge" class="inline-flex items-center gap-1.5 px-1 py-1 text-xs">
                         <span id="api-status-dot" class="inline-block h-2.5 w-2.5 rounded-full bg-slate-500"></span>
-                        <span id="api-status-text">Verificando API...</span>
+                        <span id="api-status-text" class="text-slate-300">Verificando API...</span>
                     </span>
-                    <a href="{{ route('debug') }}" class="rounded-md border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-slate-100 hover:bg-slate-800">
-                        Perfil
-                    </a>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button class="rounded-md border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-slate-100 hover:bg-slate-800">
-                            Salir
+                    <div class="relative">
+                        <button id="profile-menu-toggle" type="button" class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 bg-slate-900/60 text-slate-100 hover:bg-slate-800" aria-label="Perfil">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="8" r="4"></circle>
+                                <path d="M4 20c1.7-4 5-6 8-6s6.3 2 8 6"></path>
+                            </svg>
                         </button>
-                    </form>
+                        <div id="profile-menu-panel" class="hidden fixed w-72 overflow-y-auto border-l border-slate-700 p-5 shadow-2xl shadow-black flex flex-col" style="background-color:#2a2b2f; top:44px; right:0; bottom:0; z-index:130000;">
+                            @php($user = session('api_user', []))
+                            @php($name = trim((string)($user['nombre'] ?? 'Usuario')))
+                            @php($email = trim((string)($user['email'] ?? '')))
+                            @php($rol = trim((string)($user['rol'] ?? 'Administrador')))
+
+                            <div class="mx-auto mb-4 mt-2 flex h-16 w-16 items-center justify-center rounded-full bg-slate-600/70 text-2xl text-slate-100">
+                                {{ strtoupper(substr($name, 0, 1)) }}
+                            </div>
+                            <div class="text-center font-medium text-slate-100" style="font-size:28px;line-height:1.1;">{{ $name }}</div>
+                            <div class="mt-1 text-center text-sm text-slate-300">{{ $email }}</div>
+                            <div class="mt-3 text-center">
+                                <span class="inline-block rounded border border-slate-500 px-2 py-1 text-xs text-slate-200">{{ $rol }}</span>
+                            </div>
+                            <div class="mt-auto pt-8 pb-2 flex min-h-[190px] flex-col">
+                                <a href="{{ route('debug') }}" class="block w-full rounded-none bg-slate-500 px-4 py-3 text-left text-sm text-white hover:bg-slate-400">Ver Perfil</a>
+                                <form method="POST" action="{{ route('logout') }}" class="js-logout-form mt-auto">
+                                    @csrf
+                                    <button type="submit" class="js-logout-btn mx-auto block w-full max-w-[220px] rounded-md px-4 py-3 text-center text-sm font-medium text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-[#dc2626]" style="background:#dc2626;border:1px solid rgba(254,202,202,.35);">
+                                        <span class="js-logout-label">Cerrar sesión</span>
+                                        <span class="js-logout-loading hidden items-center justify-center gap-2">
+                                            <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white"></span>
+                                            <span>Cerrando...</span>
+                                        </span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>
@@ -130,7 +235,13 @@
                         <div class="font-medium">Eventos - <span id="eventos-total">0</span></div>
                         <div class="text-xs text-slate-400">Última actualización: <span id="eventos-updated">—</span></div>
                     </div>
-                    <div class="text-xs text-slate-400">
+                    <div class="flex items-center gap-2 text-xs text-slate-400">
+                        <button id="toggle-group-eventos" type="button" class="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-slate-300 hover:bg-slate-800" title="Agrupar por tipo de señal">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M4 5h6v6H4zM14 5h6v4h-6zM14 13h6v6h-6zM4 15h6v4H4z"></path>
+                            </svg>
+                            <span id="group-eventos-label">Agrupar</span>
+                        </button>
                         <a class="underline underline-offset-4 hover:text-slate-200" href="{{ route('debug') }}">Debug</a>
                     </div>
                 </div>
@@ -138,8 +249,12 @@
                 <div id="batchbar" class="hidden px-4 py-2 bg-blue-600/90 text-white text-sm flex items-center justify-between">
                     <div><span id="selected-count">0</span> evento(s) seleccionado(s)</div>
                     <div class="flex items-center gap-4">
-                        <button id="open-cedular" class="underline underline-offset-4">Cedular eventos</button>
-                        <button id="clear-selection" class="underline underline-offset-4 opacity-90 hover:opacity-100">Cancelar</button>
+                        <button id="open-cedular" class="cursor-pointer rounded-md border border-blue-200/50 bg-slate-900/35 px-3 py-1.5 font-medium text-white transition-colors duration-150 hover:bg-slate-900/55">
+                            Cedular eventos
+                        </button>
+                        <button id="clear-selection" class="cursor-pointer rounded-md border border-blue-200/35 bg-slate-900/25 px-3 py-1.5 font-medium text-blue-100 transition-colors duration-150 hover:bg-slate-900/45 hover:text-white">
+                            Cancelar
+                        </button>
                     </div>
                 </div>
 
@@ -157,10 +272,26 @@
                                         <input id="select-all" type="checkbox" class="accent-blue-500"/>
                                     </th>
                                     <th class="p-2 text-left">#</th>
-                                    <th class="p-2 text-left">Tipo de señal</th>
-                                    <th class="p-2 text-left">Fecha y Hora</th>
-                                    <th class="p-2 text-left">Objetivo</th>
-                                    <th class="p-2 text-left">Zona</th>
+                                    <th class="p-2 text-left">
+                                        <button type="button" class="sort-header-btn" data-sort-key="tipoSenal">
+                                            Tipo de señal <span class="sort-indicator">↕</span>
+                                        </button>
+                                    </th>
+                                    <th class="p-2 text-left">
+                                        <button type="button" class="sort-header-btn" data-sort-key="fecha">
+                                            Fecha y Hora <span class="sort-indicator">↕</span>
+                                        </button>
+                                    </th>
+                                    <th class="p-2 text-left">
+                                        <button type="button" class="sort-header-btn" data-sort-key="objetivo">
+                                            Objetivo <span class="sort-indicator">↕</span>
+                                        </button>
+                                    </th>
+                                    <th class="p-2 text-left">
+                                        <button type="button" class="sort-header-btn" data-sort-key="zona">
+                                            Zona <span class="sort-indicator">↕</span>
+                                        </button>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="eventos-tbody" class="text-slate-100">
@@ -230,7 +361,7 @@
                             <div class="text-xl font-semibold">911</div>
                             <div class="text-sm">Policía</div>
                         </div>
-                        <div class="rounded-lg bg-red-600 p-3 text-center">
+                        <div class="rounded-lg p-3 text-center" style="background:#dc2626;border:1px solid rgba(254,202,202,.35);">
                             <div class="text-xl font-semibold">100</div>
                             <div class="text-sm">Bomberos</div>
                         </div>
@@ -300,6 +431,9 @@
             lastFocusedCriticalObjetivoId: null,
             coordsHydrationInFlight: false,
             lastCoordsHydrationAt: 0,
+            eventosSort: { key: 'fecha', dir: 'desc' },
+            eventosGroupByTipo: false,
+            eventosCollapsedGroups: new Set(),
         };
         const mapAnimation = {
             focusDuration: 6.8,
@@ -399,7 +533,14 @@
             stack.innerHTML = orderedAlerts.map((a) => `
                 <div class="critical-alert-card">
                     <div class="flex items-start justify-between gap-2">
-                        <div class="text-sm font-semibold text-slate-100">Atención requerida en objetivo crítico</div>
+                        <div class="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                            <span class="inline-flex h-5 w-5 items-center justify-center rounded-full" style="color:rgba(248,113,113,.75);border:1px solid rgba(248,113,113,.75);background:rgba(248,113,113,.08);">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round">
+                                    <path d="M6 6l12 12M18 6L6 18"></path>
+                                </svg>
+                            </span>
+                            Atención requerida en objetivo crítico
+                        </div>
                         <button class="text-slate-400 hover:text-white text-sm leading-none critical-alert-close" data-id="${a.id}">×</button>
                     </div>
                     <div class="mt-1 text-sm text-slate-200">${a.objetivoNombre}</div>
@@ -577,23 +718,67 @@
             document.getElementById('count-muerto').textContent = c.MUERTO ?? 0;
         }
 
-        function renderEventos() {
-            const tbody = document.getElementById('eventos-tbody');
-            const q = (document.getElementById('eventos-search').value || '').toLowerCase().trim();
+        function compareDateLike(valueA, valueB) {
+            const parse = (v) => {
+                const raw = String(v ?? '').trim();
+                if (!raw) return Number.NEGATIVE_INFINITY;
+                const normalized = raw
+                    .replaceAll('a. m.', 'AM')
+                    .replaceAll('p. m.', 'PM')
+                    .replaceAll('a.m.', 'AM')
+                    .replaceAll('p.m.', 'PM');
+                const native = Date.parse(normalized);
+                if (!Number.isNaN(native)) return native;
 
-            const filteredAll = state.eventos.filter(e => {
-                const hay = [
-                    e.idEvento, e.tipoSenal, e.fecha, e.objetivo, e.zona
-                ].filter(Boolean).join(' ').toLowerCase();
-                return q === '' || hay.includes(q);
+                const match = normalized.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+                if (!match) return Number.NEGATIVE_INFINITY;
+                let [, dd, mm, yy, hh, mi, ss, ampm] = match;
+                let year = Number(yy);
+                if (year < 100) year += 2000;
+                let hour = Number(hh);
+                if (ampm) {
+                    const up = ampm.toUpperCase();
+                    if (up === 'PM' && hour < 12) hour += 12;
+                    if (up === 'AM' && hour === 12) hour = 0;
+                }
+                return new Date(year, Number(mm) - 1, Number(dd), hour, Number(mi), Number(ss || 0)).getTime();
+            };
+            return parse(valueA) - parse(valueB);
+        }
+
+        function sortEventos(items) {
+            const cfg = state.eventosSort || { key: 'fecha', dir: 'desc' };
+            const dir = cfg.dir === 'asc' ? 1 : -1;
+            const key = cfg.key || 'fecha';
+            return [...items].sort((a, b) => {
+                if (key === 'fecha') {
+                    const byDate = compareDateLike(a?.fecha, b?.fecha);
+                    if (byDate !== 0) return byDate * dir;
+                    return String(a?.idEvento ?? '').localeCompare(String(b?.idEvento ?? ''), 'es', { numeric: true }) * dir;
+                }
+                const va = String(a?.[key] ?? '');
+                const vb = String(b?.[key] ?? '');
+                const byText = va.localeCompare(vb, 'es', { sensitivity: 'base', numeric: true });
+                if (byText !== 0) return byText * dir;
+                return compareDateLike(a?.fecha, b?.fecha) * -1;
             });
+        }
 
-            // Solo mostramos hasta 30 eventos para no desarmar la pantalla
-            const filtered = filteredAll.slice(0, 30);
+        function updateSortHeadersUi() {
+            const cfg = state.eventosSort || { key: 'fecha', dir: 'desc' };
+            document.querySelectorAll('.sort-header-btn').forEach((btn) => {
+                const key = btn.dataset.sortKey;
+                const indicator = btn.querySelector('.sort-indicator');
+                const isActive = key === cfg.key;
+                btn.classList.toggle('is-active', isActive);
+                if (!indicator) return;
+                indicator.textContent = isActive ? (cfg.dir === 'asc' ? '↑' : '↓') : '↕';
+            });
+        }
 
-            document.getElementById('eventos-total').textContent = String(filteredAll.length);
-            tbody.innerHTML = filtered.map(e => {
-                const checked = state.selected.has(e.idEvento) ? 'checked' : '';
+        function renderEventosRows(items) {
+            return items.map((e) => {
+                const checked = state.selected.has(Number(e.idEvento)) ? 'checked' : '';
                 return `
                     <tr class="table-row">
                         <td class="p-2">
@@ -607,9 +792,113 @@
                     </tr>
                 `;
             }).join('');
+        }
 
+        function hookGroupCollapseButtons() {
+            document.querySelectorAll('.group-toggle-btn').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const key = decodeURIComponent(String(btn.dataset.groupKey || ''));
+                    if (!key) return;
+                    if (state.eventosCollapsedGroups.has(key)) state.eventosCollapsedGroups.delete(key);
+                    else state.eventosCollapsedGroups.add(key);
+                    renderEventos();
+                });
+            });
+        }
+
+        function renderEventos() {
+            const tbody = document.getElementById('eventos-tbody');
+            const q = (document.getElementById('eventos-search').value || '').toLowerCase().trim();
+
+            const filteredAll = state.eventos.filter(e => {
+                const hay = [
+                    e.idEvento, e.tipoSenal, e.fecha, e.objetivo, e.zona
+                ].filter(Boolean).join(' ').toLowerCase();
+                return q === '' || hay.includes(q);
+            });
+
+            const sorted = sortEventos(filteredAll);
+            // Solo mostramos hasta 30 eventos para no desarmar la pantalla
+            const filtered = sorted.slice(0, 30);
+
+            document.getElementById('eventos-total').textContent = String(filteredAll.length);
+            if (state.eventosGroupByTipo) {
+                const groups = new Map();
+                for (const ev of filtered) {
+                    const key = String(ev.tipoSenal || 'Sin tipo');
+                    if (!groups.has(key)) groups.set(key, []);
+                    groups.get(key).push(ev);
+                }
+                const rows = [];
+                for (const [tipo, events] of groups.entries()) {
+                    const groupKey = encodeURIComponent(tipo);
+                    const collapsed = state.eventosCollapsedGroups.has(tipo);
+                    rows.push(`
+                        <tr class="group-row">
+                            <td colspan="6">
+                                <div class="group-row-content">
+                                    <button type="button" class="group-toggle-btn ${collapsed ? 'is-collapsed' : ''}" data-group-key="${groupKey}" aria-expanded="${collapsed ? 'false' : 'true'}" title="${collapsed ? 'Expandir grupo' : 'Colapsar grupo'}">
+                                        <span class="group-toggle-icon">▾</span>
+                                        <span class="group-row-label">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                <path d="M4 5h6v6H4zM14 5h6v4h-6zM14 13h6v6h-6zM4 15h6v4H4z"></path>
+                                            </svg>
+                                            ${tipo}
+                                        </span>
+                                    </button>
+                                    <span class="group-row-count">${events.length} evento(s)</span>
+                                </div>
+                            </td>
+                        </tr>
+                    `);
+                    if (!collapsed) rows.push(renderEventosRows(events));
+                }
+                tbody.innerHTML = rows.join('');
+            } else {
+                tbody.innerHTML = renderEventosRows(filtered);
+            }
+
+            updateSortHeadersUi();
             hookRowChecks();
+            hookGroupCollapseButtons();
             updateBatchBar();
+        }
+
+        function hookSortHeaders() {
+            document.querySelectorAll('.sort-header-btn').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const key = btn.dataset.sortKey;
+                    if (!key) return;
+                    if (state.eventosSort.key === key) {
+                        state.eventosSort.dir = state.eventosSort.dir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        state.eventosSort.key = key;
+                        state.eventosSort.dir = key === 'fecha' ? 'desc' : 'asc';
+                    }
+                    renderEventos();
+                });
+            });
+        }
+
+        function hookGroupToggle() {
+            const btn = document.getElementById('toggle-group-eventos');
+            const label = document.getElementById('group-eventos-label');
+            if (!btn || !label) return;
+            const updateButton = () => {
+                label.textContent = state.eventosGroupByTipo ? 'Agrupado' : 'Agrupar';
+                btn.classList.toggle('border-blue-500/60', state.eventosGroupByTipo);
+                btn.classList.toggle('text-blue-300', state.eventosGroupByTipo);
+                btn.classList.toggle('bg-blue-950/45', state.eventosGroupByTipo);
+                btn.classList.toggle('shadow-[0_0_0_1px_rgba(59,130,246,.22)_inset]', state.eventosGroupByTipo);
+                btn.setAttribute('aria-pressed', state.eventosGroupByTipo ? 'true' : 'false');
+                btn.title = state.eventosGroupByTipo ? 'Quitar agrupación por tipo de señal' : 'Agrupar por tipo de señal';
+            };
+            btn.addEventListener('click', () => {
+                state.eventosGroupByTipo = !state.eventosGroupByTipo;
+                updateButton();
+                renderEventos();
+            });
+            updateButton();
         }
 
         function updateBatchBar() {
@@ -1170,11 +1459,13 @@
             if (!dot || !text) return;
             if (isConnected) {
                 dot.className = 'inline-block h-2.5 w-2.5 rounded-full bg-emerald-400';
+                text.style.color = 'rgba(167, 243, 208, 0.85)';
                 text.textContent = 'Conectado';
                 return;
             }
             dot.className = 'inline-block h-2.5 w-2.5 rounded-full bg-red-400';
-            text.textContent = 'Sin conexión';
+            text.style.color = 'rgba(254, 205, 211, 0.85)';
+            text.textContent = 'Desconectado';
         }
 
         async function checkApiConnection() {
@@ -1195,10 +1486,46 @@
             setInterval(checkApiConnection, 15000);
         }
 
+        function initProfileMenu() {
+            const toggle = document.getElementById('profile-menu-toggle');
+            const panel = document.getElementById('profile-menu-panel');
+            if (!toggle || !panel) return;
+
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                panel.classList.toggle('hidden');
+            });
+
+            panel.addEventListener('click', (e) => e.stopPropagation());
+            document.addEventListener('click', () => panel.classList.add('hidden'));
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') panel.classList.add('hidden');
+            });
+        }
+
+        function initLogoutButtons() {
+            document.querySelectorAll('.js-logout-form').forEach((form) => {
+                form.addEventListener('submit', () => {
+                    const btn = form.querySelector('.js-logout-btn');
+                    const label = form.querySelector('.js-logout-label');
+                    const loading = form.querySelector('.js-logout-loading');
+                    if (!btn || !label || !loading) return;
+                    btn.disabled = true;
+                    label.classList.add('hidden');
+                    loading.classList.remove('hidden');
+                    loading.classList.add('inline-flex');
+                });
+            });
+        }
+
         // Boot (espera a que Vite cargue Leaflet)
         document.addEventListener('DOMContentLoaded', () => {
             startClock();
             startApiConnectionMonitor();
+            initProfileMenu();
+            initLogoutButtons();
+            hookSortHeaders();
+            hookGroupToggle();
             renderEventos();
             renderCounts();
             waitForLeafletReady(() => {
