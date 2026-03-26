@@ -46,7 +46,11 @@ class AuthWebController extends Controller
     {
         $token = (string) $request->session()->get('api_token');
         if ($token !== '') {
-            $api->logout($token);
+            try {
+                $api->logout($token);
+            } catch (\Throwable) {
+                // Nunca bloqueamos la salida local por fallas remotas de la API.
+            }
         }
 
         $request->session()->invalidate();

@@ -1,22 +1,22 @@
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="min-h-screen bg-slate-950 text-slate-100 p-6">
+@extends('layouts.app', ['activeNav' => 'debug'])
+
+@section('title', 'Debug')
+
+@section('content')
     <div class="max-w-4xl mx-auto space-y-6">
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-xl font-semibold">Dashboard</h1>
                 <p class="text-sm text-slate-400">Sesión contra la API (Sanctum) vía Bearer token.</p>
             </div>
-            <form method="POST" action="{{ route('logout') }}">
+            <form method="POST" action="{{ route('logout') }}" class="js-logout-form">
                 @csrf
-                <button class="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm hover:bg-slate-900">
-                    Salir
+                <button type="submit" class="js-logout-btn rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm hover:bg-slate-900">
+                    <span class="js-logout-label">Salir</span>
+                    <span class="js-logout-loading hidden items-center justify-center gap-2">
+                        <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white"></span>
+                        <span>Saliendo...</span>
+                    </span>
                 </button>
             </form>
         </div>
@@ -35,6 +35,5 @@
             </div>
         </div>
     </div>
-</body>
-</html>
+@endsection
 

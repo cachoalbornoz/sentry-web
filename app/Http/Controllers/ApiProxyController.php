@@ -4,11 +4,28 @@ namespace App\Http\Controllers;
 
 use App\Services\SentryApiClient;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class ApiProxyController extends Controller
 {
+    private function unauthorizedResponse(Request $request): JsonResponse
+    {
+        $request->session()->forget([
+            'api_token',
+            'api_user',
+            'api_token_expires_at',
+            'last_eventos_payload',
+            'last_objetivos_payload',
+        ]);
+
+        return response()->json([
+            'message' => 'Sesión vencida. Iniciá sesión nuevamente.',
+            'session_expired' => true,
+        ], 401);
+    }
+
     public function eventos(Request $request, SentryApiClient $api)
     {
         $token = (string) $request->session()->get('api_token');
@@ -26,6 +43,11 @@ class ApiProxyController extends Controller
             }
 
             return response()->json([], 200, ['X-Sentry-Stale' => '1']);
+        } catch (RequestException $e) {
+            if (($e->response?->status() ?? 0) === 401) {
+                return $this->unauthorizedResponse($request);
+            }
+            throw $e;
         }
     }
 
@@ -52,19 +74,38 @@ class ApiProxyController extends Controller
                 'stale' => true,
                 'message' => 'Sin respuesta temporal de API de objetivos.',
             ]);
+        } catch (RequestException $e) {
+            if (($e->response?->status() ?? 0) === 401) {
+                return $this->unauthorizedResponse($request);
+            }
+            throw $e;
         }
     }
 
     public function cedulacionTipos(Request $request, SentryApiClient $api)
     {
         $token = (string) $request->session()->get('api_token');
-        return response()->json($api->cedulacionTipos($token));
+        try {
+            return response()->json($api->cedulacionTipos($token));
+        } catch (RequestException $e) {
+            if (($e->response?->status() ?? 0) === 401) {
+                return $this->unauthorizedResponse($request);
+            }
+            throw $e;
+        }
     }
 
     public function cedulacionObservaciones(Request $request, SentryApiClient $api)
     {
         $token = (string) $request->session()->get('api_token');
-        return response()->json($api->cedulacionObservaciones($token));
+        try {
+            return response()->json($api->cedulacionObservaciones($token));
+        } catch (RequestException $e) {
+            if (($e->response?->status() ?? 0) === 401) {
+                return $this->unauthorizedResponse($request);
+            }
+            throw $e;
+        }
     }
 
     public function objetivoContactos(Request $request, SentryApiClient $api, int $objetivo): JsonResponse
@@ -74,6 +115,11 @@ class ApiProxyController extends Controller
             return response()->json($api->objetivoContactos($token, $objetivo));
         } catch (ConnectionException) {
             return response()->json(['data' => [], 'stale' => true]);
+        } catch (RequestException $e) {
+            if (($e->response?->status() ?? 0) === 401) {
+                return $this->unauthorizedResponse($request);
+            }
+            throw $e;
         }
     }
 
@@ -84,6 +130,11 @@ class ApiProxyController extends Controller
             return response()->json($api->objetivoDetalle($token, $objetivo));
         } catch (ConnectionException) {
             return response()->json(['stale' => true], 200);
+        } catch (RequestException $e) {
+            if (($e->response?->status() ?? 0) === 401) {
+                return $this->unauthorizedResponse($request);
+            }
+            throw $e;
         }
     }
 
@@ -101,8 +152,11 @@ class ApiProxyController extends Controller
         try {
             $result = $api->guardarCedulacion($token, $payload);
             return response()->json($result);
-        } catch (\Illuminate\Http\Client\RequestException $e) {
+        } catch (RequestException $e) {
             $status = $e->response?->status() ?? 500;
+            if ($status === 401) {
+                return $this->unauthorizedResponse($request);
+            }
             $json = $e->response?->json() ?? ['status' => 'error', 'message' => $e->getMessage()];
             return response()->json($json, $status);
         }

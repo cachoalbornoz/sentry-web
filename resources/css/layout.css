@@ -1,0 +1,8 @@
+button {
+    cursor: pointer;
+    transition: background-color .18s ease, color .18s ease, border-color .18s ease, filter .18s ease;
+}
+
+button:hover:not(:disabled) {
+    filter: brightness(.82);
+}

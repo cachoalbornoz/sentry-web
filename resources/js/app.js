@@ -1,4 +1,5 @@
 import './bootstrap';
+import './layout-shell';
 
 // Leaflet (local, sin depender de CDN bloqueables por el navegador)
 import L from 'leaflet';
