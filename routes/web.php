@@ -20,6 +20,10 @@ Route::get('/dashboard', HomeWebController::class)
     ->middleware('api.token')
     ->name('dashboard');
 
+Route::view('/objetivos', 'objetivos')
+    ->middleware('api.token')
+    ->name('objetivos');
+
 Route::get('/debug', DashboardWebController::class)
     ->middleware('api.token')
     ->name('debug');
@@ -27,6 +31,7 @@ Route::get('/debug', DashboardWebController::class)
 Route::prefix('/x')->middleware('api.token')->group(function () {
     Route::get('/eventos', [ApiProxyController::class, 'eventos'])->name('x.eventos');
     Route::get('/objetivos', [ApiProxyController::class, 'objetivos'])->name('x.objetivos');
+    Route::get('/objetivos/{objetivo}', [ApiProxyController::class, 'objetivoDetalle'])->name('x.objetivos.detalle');
     Route::get('/objetivos/contactos/{objetivo}', [ApiProxyController::class, 'objetivoContactos'])->name('x.objetivos.contactos');
     Route::get('/cedulacion/tipos', [ApiProxyController::class, 'cedulacionTipos'])->name('x.cedulacion.tipos');
     Route::get('/cedulacion/observaciones', [ApiProxyController::class, 'cedulacionObservaciones'])->name('x.cedulacion.observaciones');

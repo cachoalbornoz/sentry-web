@@ -3,18 +3,25 @@
 namespace App\Services;
 
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 
 class SentryApiClient
 {
     public function request(?string $token = null): PendingRequest
     {
-        $baseUrl = config('services.sentry_api.base_url');
+        $baseUrl = trim((string) config('services.sentry_api.base_url', ''));
+        if ($baseUrl === '') {
+            throw new RuntimeException('SENTRY_API_BASE_URL no está configurado en el entorno.');
+        }
 
-        return Http::baseUrl(rtrim((string) $baseUrl, '/'))
+        return Http::baseUrl(rtrim($baseUrl, '/'))
             ->acceptJson()
             ->asJson()
+            ->connectTimeout(3)
+            ->timeout(15)
             ->when($token, fn (PendingRequest $req) => $req->withToken($token));
     }
 
@@ -48,9 +55,14 @@ class SentryApiClient
     public function logout(string $token): void
     {
         try {
-            $this->request($token)->post('/logout')->throw();
-        } catch (RequestException) {
-            // No bloqueamos el logout local si el token ya expiró o fue revocado.
+            // Logout no debe bloquear UX si la API está lenta o no responde.
+            $this->request($token)
+                ->connectTimeout(2)
+                ->timeout(4)
+                ->post('/logout')
+                ->throw();
+        } catch (RequestException|ConnectionException) {
+            // No bloqueamos el logout local si el token ya expiró, fue revocado o hay timeout.
         }
     }
 
@@ -90,6 +102,14 @@ class SentryApiClient
     {
         return $this->request($token)
             ->get("/objetivos/contactos/{$objetivoId}")
+            ->throw()
+            ->json();
+    }
+
+    public function objetivoDetalle(string $token, int $objetivoId): array
+    {
+        return $this->request($token)
+            ->get("/objetivos/{$objetivoId}")
             ->throw()
             ->json();
     }
