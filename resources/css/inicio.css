@@ -1,0 +1,216 @@
+.card {
+    border: 1px solid rgb(30 41 59 / 1);
+    background: rgb(15 23 42 / .55);
+}
+
+.panel {
+    border: 1px solid rgb(30 41 59 / 1);
+    background: rgb(15 23 42 / .55);
+}
+
+.table-row {
+    border-bottom: 1px solid rgb(30 41 59 / 1);
+}
+
+.table-row:hover {
+    background: rgb(2 6 23 / .35);
+}
+
+#map {
+    height: 420px;
+    position: relative;
+    z-index: 1;
+}
+
+.modal-backdrop {
+    background: rgba(2, 6, 23, 0.45);
+    backdrop-filter: blur(1px);
+}
+
+.chip {
+    border: 1px solid rgb(51 65 85 / 1);
+    background: rgb(2 6 23 / .35);
+}
+
+.leaflet-container {
+    background: #0b1220;
+}
+
+#cedular-modal {
+    z-index: 99999 !important;
+}
+
+#cedular-modal .modal-backdrop {
+    z-index: 99998 !important;
+    background: rgba(2, 6, 23, 0.45) !important;
+}
+
+#cedular-panel {
+    z-index: 99999 !important;
+}
+
+#eventos-scroll {
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.sort-header-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: rgb(226 232 240 / 1);
+    font-weight: 500;
+    padding: 2px 0;
+    border-bottom: 1px solid transparent;
+}
+
+.sort-header-btn:hover {
+    color: rgb(248 250 252 / 1);
+}
+
+.sort-header-btn .sort-indicator {
+    color: rgb(100 116 139 / 1);
+    font-size: 11px;
+    line-height: 1;
+}
+
+.sort-header-btn.is-active {
+    color: rgb(191 219 254 / 1);
+    border-bottom-color: rgb(59 130 246 / .7);
+}
+
+.sort-header-btn.is-active .sort-indicator {
+    color: rgb(59 130 246 / 1);
+}
+
+.group-row {
+    background: linear-gradient(90deg, rgb(15 23 42 / .95), rgb(15 23 42 / .65));
+    border-top: 1px solid rgb(51 65 85 / 1);
+    border-bottom: 1px solid rgb(51 65 85 / 1);
+}
+
+.group-row td {
+    padding: 9px 10px;
+    font-size: 12px;
+    color: rgb(148 163 184 / 1);
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.group-row-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.group-row-label,
+.group-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: rgb(186 230 253 / .95);
+    font-weight: 600;
+}
+
+.group-toggle-icon {
+    color: rgb(148 163 184 / 1);
+    font-size: 11px;
+    transition: transform .16s ease;
+}
+
+.group-toggle-btn.is-collapsed .group-toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.group-row-count {
+    border: 1px solid rgb(71 85 105 / .85);
+    border-radius: 999px;
+    padding: 1px 8px;
+    color: rgb(203 213 225 / 1);
+    font-size: 11px;
+    text-transform: none;
+}
+
+.dashboard-state-icon {
+    display: inline-flex;
+    width: 56px;
+    height: 56px;
+    align-items: center;
+    justify-content: center;
+    color: currentColor;
+}
+
+.dashboard-state-icon svg {
+    display: block;
+    overflow: visible;
+}
+
+.dashboard-state-icon .state-hex {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 4;
+    stroke-linejoin: round;
+}
+
+.dashboard-state-icon .state-hex-fill {
+    fill: currentColor;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+
+.dashboard-state-icon .state-badge-bg {
+    fill: rgba(15, 23, 42, .96);
+    stroke: currentColor;
+    stroke-width: 2;
+}
+
+.dashboard-state-icon .state-mark {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.dashboard-state-icon .state-mark-solid {
+    fill: currentColor;
+    stroke: none;
+}
+
+.dashboard-state-icon .state-mark-contrast {
+    fill: none;
+    stroke: #f8fafc;
+    stroke-width: 4.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.icon-online { color: #4589ff; }
+.icon-critico { color: #da1e28; }
+.icon-offline { color: #f4f4f4; }
+.icon-muerto { color: #ff832b; }
+
+.state-icon-svg-inline {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+}
+
+.cedular-multi-list {
+    flex: 0 0 auto;
+}
+
+.cedular-multi-scroll {
+    max-height: 220px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.cedular-emergency-card-danger {
+    background: #dc2626;
+    border: 1px solid rgba(254, 202, 202, .35);
+}

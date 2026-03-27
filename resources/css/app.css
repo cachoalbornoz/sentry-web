@@ -1,5 +1,12 @@
 @import 'tailwindcss';
 @import './layout.css';
+@import './navbar.css';
+@import './objetivos.css';
+@import './inicio.css';
+@import './login.css';
+@import './critical-alert-stack.css';
+@import './profile-sidebar.css';
+@import './shell.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';

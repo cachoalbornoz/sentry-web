@@ -3,6 +3,14 @@ if (window.__sentryLayoutShellInitialized) {
 } else {
     window.__sentryLayoutShellInitialized = true;
 
+function getLayoutConfig() {
+    const body = document.body;
+    return {
+        apiStatusUrl: body?.dataset.apiStatusUrl || window.SENTRY_LAYOUT?.apiStatusUrl || '',
+        loginUrl: body?.dataset.loginUrl || window.SENTRY_LAYOUT?.loginUrl || '',
+    };
+}
+
 function startClock() {
     const clockEl = document.getElementById('topbar-clock');
     if (!clockEl) return;
@@ -29,7 +37,7 @@ function setApiConnectionStatus(isConnected) {
 }
 
 async function checkApiConnection() {
-    const url = window.SENTRY_LAYOUT?.apiStatusUrl;
+    const url = getLayoutConfig().apiStatusUrl;
     if (!url) return;
     try {
         const res = await fetch(url, {
@@ -39,7 +47,7 @@ async function checkApiConnection() {
         });
         const data = await res.json().catch(() => null);
         if (res.status === 401 && data?.session_expired) {
-            const loginUrl = window.SENTRY_LAYOUT?.loginUrl;
+            const loginUrl = getLayoutConfig().loginUrl;
             if (loginUrl) window.location.href = loginUrl;
             return;
         }
@@ -86,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initProfileMenu();
     initLogoutButtons();
     checkApiConnection();
-    if (window.SENTRY_LAYOUT?.apiStatusUrl) {
+    if (getLayoutConfig().apiStatusUrl) {
         setInterval(checkApiConnection, 15000);
     }
 });

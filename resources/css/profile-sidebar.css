@@ -1,0 +1,17 @@
+.profile-menu-panel {
+    background-color: #2a2b2f;
+    top: 44px;
+    right: 0;
+    bottom: 0;
+    z-index: 130000;
+}
+
+.profile-menu-name {
+    font-size: 28px;
+    line-height: 1.1;
+}
+
+.profile-logout-btn {
+    background: #dc2626;
+    border: 1px solid rgba(254, 202, 202, .35);
+}

@@ -1,22 +1,22 @@
 <header class="w-full bg-[#0d0f14] px-3 py-2.5">
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-10">
+        <div class="flex items-center">
             <a href="{{ route('dashboard') }}" class="inline-flex items-center" aria-label="Ir a inicio">
-                <img src="{{ asset('isotipo-grises.svg') }}" alt="Sentry" class="h-8 w-auto object-contain opacity-90" style="transform: translateY(-1px);">
+                <img src="{{ asset('isotipo-grises.svg') }}" alt="Sentry" class="app-navbar-logo h-8 w-auto object-contain opacity-90">
             </a>
-            <nav class="ml-10 flex items-center gap-0 text-sm">
+            <nav class="app-navbar-nav flex items-center gap-0 text-sm">
                 <a href="{{ route('dashboard') }}"
-                   class="relative inline-flex items-end px-4 transition-colors {{ ($activeNav ?? '') === 'inicio' ? 'text-slate-100' : 'text-slate-200 hover:text-white' }}" style="height: 50px;">
-                    <span style="transform: translateY(-10px); display: inline-block;">Inicio</span>
+                   class="app-navbar-link relative inline-flex items-end px-4 transition-colors {{ ($activeNav ?? '') === 'inicio' ? 'text-slate-100' : 'text-slate-200 hover:text-white' }}">
+                    <span class="app-navbar-label">Inicio</span>
                     @if (($activeNav ?? '') === 'inicio')
-                        <span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:2px;height:3px;background:#0f62fe;display:block;"></span>
+                        <span aria-hidden="true" class="app-navbar-active-indicator"></span>
                     @endif
                 </a>
                 <a href="{{ route('objetivos') }}"
-                   class="relative inline-flex items-end px-4 transition-colors {{ ($activeNav ?? '') === 'objetivos' ? 'text-slate-100' : 'text-slate-200 hover:text-white' }}" style="height: 50px;">
-                    <span style="transform: translateY(-10px); display: inline-block;">Objetivos</span>
+                   class="app-navbar-link relative inline-flex items-end px-4 transition-colors {{ ($activeNav ?? '') === 'objetivos' ? 'text-slate-100' : 'text-slate-200 hover:text-white' }}">
+                    <span class="app-navbar-label">Objetivos</span>
                     @if (($activeNav ?? '') === 'objetivos')
-                        <span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:2px;height:3px;background:#0f62fe;display:block;"></span>
+                        <span aria-hidden="true" class="app-navbar-active-indicator"></span>
                     @endif
                 </a>
             </nav>

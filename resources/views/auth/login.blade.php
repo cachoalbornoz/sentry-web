@@ -2,85 +2,6 @@
 
 @section('title', 'Ingreso')
 
-@push('styles')
-    <style>
-        #login-screen {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            background: #090b0f;
-        }
-        #login-card {
-            width: 100%;
-            max-width: 420px;
-            border: 1px solid #181c24;
-            background: #0c0f14;
-            padding: 40px 48px;
-            box-shadow: 0 24px 50px rgba(0, 0, 0, 0.45);
-            color: #f1f5f9;
-        }
-        #login-card label {
-            color: #e2e8f0;
-        }
-        #login-card input {
-            height: 48px;
-            width: 100%;
-            border: 1px solid #3b4352;
-            background: #1b1f28;
-            color: #fff;
-        }
-        #password-wrap {
-            position: relative;
-        }
-        #password {
-            padding-right: 48px;
-        }
-        #toggle-password {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #94a3b8;
-            background: transparent;
-            border: 0;
-        }
-        #toggle-password:hover {
-            color: #e2e8f0;
-        }
-        #login-card input::placeholder {
-            color: #64748b;
-        }
-        #login-card input:focus {
-            outline: none;
-            border-color: #5a6476;
-        }
-        #login-submit {
-            height: 56px;
-            width: 100%;
-            background: #2563eb;
-            color: #fff;
-            font-size: 18px;
-            font-weight: 600;
-            border: 0;
-        }
-        #login-submit:hover:not(:disabled) {
-            background: #1d4ed8;
-        }
-        #login-submit-loading {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-    </style>
-@endpush
-
 @section('content')
     <div id="login-screen" class="min-h-screen flex items-center justify-center p-6">
         <div id="login-card" class="w-full max-w-[420px] border border-[#181c24] bg-[#0c0f14] px-12 py-10 shadow-2xl shadow-black/40">
@@ -94,7 +15,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('login.submit') }}" class="space-y-6">
+            <form method="POST" action="{{ route('login.submit') }}" class="space-y-6" data-login-form>
                 @csrf
 
                 <div>
@@ -130,26 +51,4 @@
     </div>
 @endsection
 
-@push('scripts')
-    <script>
-        document.getElementById('toggle-password')?.addEventListener('click', () => {
-            const input = document.getElementById('password');
-            if (!input) return;
-            input.type = input.type === 'password' ? 'text' : 'password';
-        });
-
-        document.querySelector('form[action="{{ route('login.submit') }}"]')?.addEventListener('submit', () => {
-            const btn = document.getElementById('login-submit');
-            const label = document.getElementById('login-submit-label');
-            const loading = document.getElementById('login-submit-loading');
-            if (!btn || !label || !loading) return;
-            btn.disabled = true;
-            label.classList.add('hidden');
-            loading.classList.remove('hidden');
-            loading.classList.add('inline-flex');
-            label.style.display = 'none';
-            loading.style.display = 'inline-flex';
-        });
-    </script>
-@endpush
 
