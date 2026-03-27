@@ -263,24 +263,27 @@
         </div>
     </div>
 
+    @php
+        $inicioPageConfig = [
+            'initialEventos' => $eventos,
+            'initialObjetivos' => $objetivos,
+            'stadiaKey' => $stadiaKey,
+            'useStadiaBasemap' => $useStadiaBasemap,
+            'contactosRouteTemplate' => route('x.objetivos.contactos', ['objetivo' => '__OBJETIVO__']),
+            'objetivoDetalleRouteTemplate' => route('x.objetivos.detalle', ['objetivo' => '__OBJETIVO__']),
+            'loginUrl' => route('login.form'),
+            'cedulacionTiposUrl' => route('x.cedulacion.tipos'),
+            'cedulacionObservacionesUrl' => route('x.cedulacion.observaciones'),
+            'cedulacionGuardarUrl' => route('x.cedulacion.guardar'),
+            'cartoTileTemplate' => $cartoTileTemplate,
+            'stadiaTileTemplate' => $stadiaTileTemplate,
+            'eventosUrl' => route('x.eventos'),
+            'objetivosUrl' => route('x.objetivos'),
+            'sseDashboardUrl' => route('x.sse.dashboard'),
+            'csrfToken' => csrf_token(),
+        ];
+    @endphp
     <div id="inicio-page-config" hidden
-         data-config='@json([
-             "initialEventos" => $eventos,
-             "initialObjetivos" => $objetivos,
-             "stadiaKey" => $stadiaKey,
-             "useStadiaBasemap" => $useStadiaBasemap,
-             "contactosRouteTemplate" => route("x.objetivos.contactos", ["objetivo" => "__OBJETIVO__"]),
-             "objetivoDetalleRouteTemplate" => route("x.objetivos.detalle", ["objetivo" => "__OBJETIVO__"]),
-             "loginUrl" => route("login.form"),
-             "cedulacionTiposUrl" => route("x.cedulacion.tipos"),
-             "cedulacionObservacionesUrl" => route("x.cedulacion.observaciones"),
-             "cedulacionGuardarUrl" => route("x.cedulacion.guardar"),
-             "cartoTileTemplate" => $cartoTileTemplate,
-             "stadiaTileTemplate" => $stadiaTileTemplate,
-             "eventosUrl" => route("x.eventos"),
-             "objetivosUrl" => route("x.objetivos"),
-             "sseDashboardUrl" => route("x.sse.dashboard"),
-             "csrfToken" => csrf_token(),
-         ])'></div>
+         data-config="{{ e(json_encode($inicioPageConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) }}"></div>
 @endsection
 
