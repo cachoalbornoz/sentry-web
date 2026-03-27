@@ -91,37 +91,6 @@
             font-size: 11px;
             text-transform: none;
         }
-        #critical-alerts-stack {
-            position: fixed;
-            left: 12px;
-            top: 50vh;
-            bottom: 12px;
-            z-index: 5000;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 320px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding-right: 4px;
-        }
-        .critical-alert-card {
-            border: 1px solid rgba(248, 113, 113, 0.28);
-            border-left: 3px solid rgba(248, 113, 113, 0.75);
-            background: rgba(15, 23, 42, 0.96);
-            box-shadow: 0 10px 24px rgb(2 6 23 / 0.45), 0 0 0 1px rgba(239, 68, 68, 0.08) inset;
-            border-radius: 12px;
-            padding: 10px 12px;
-        }
-        .critical-alert-icon {
-            display: inline-flex;
-            width: 20px;
-            height: 20px;
-            align-items: center;
-            justify-content: center;
-            color: #da1e28;
-            flex: 0 0 auto;
-        }
         .dashboard-state-icon {
             display: inline-flex;
             width: 56px;
@@ -349,7 +318,7 @@
         </div>
 
     {{-- Alertas críticas apiladas (bottom-left) --}}
-    <div id="critical-alerts-stack" class="hidden"></div>
+    @include('components.critical-alert-stack', ['id' => 'critical-alerts-stack'])
 
     {{-- Modal cedulación --}}
     <div id="cedular-modal" class="hidden fixed inset-0 z-[4000] p-4">
@@ -514,7 +483,7 @@
             };
 
             return `
-                <svg width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                <svg class="state-icon-svg" width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
                     ${icons[type] || icons.critico}
                 </svg>
             `;
@@ -596,60 +565,33 @@
 
         function renderCriticalAlerts() {
             const stack = document.getElementById('critical-alerts-stack');
-            if (!Array.isArray(state.criticalAlerts) || state.criticalAlerts.length === 0) {
-                stack.classList.add('hidden');
-                stack.innerHTML = '';
-                return;
-            }
-
-            stack.classList.remove('hidden');
-            const orderedAlerts = [...state.criticalAlerts].reverse(); // Nuevo arriba, viejo abajo
-            stack.innerHTML = orderedAlerts.map((a) => `
-                <div class="critical-alert-card">
-                    <div class="flex items-start justify-between gap-2">
-                        <div class="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                            <span class="critical-alert-icon">${renderStateIcon('critico', 20)}</span>
-                            Atención requerida en objetivo crítico
-                        </div>
-                        <button class="text-slate-400 hover:text-white text-sm leading-none critical-alert-close" data-id="${a.id}">×</button>
-                    </div>
-                    <div class="mt-1 text-sm text-slate-200">${a.objetivoNombre}</div>
-                    <div class="mt-1 text-xs text-slate-400">Se detectó estado crítico.</div>
-                    <div class="mt-3">
-                        <button class="critical-alert-cedular rounded-md border border-slate-600 bg-slate-900/80 px-3 py-1.5 text-sm hover:bg-slate-800"
-                                data-objetivo-id="${a.objetivoId}">
-                            Cedular evento
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-
-            stack.querySelectorAll('.critical-alert-close').forEach((btn) => {
-                btn.addEventListener('click', () => {
-                    const id = String(btn.dataset.id || '');
-                    state.criticalAlerts = state.criticalAlerts.filter((a) => String(a.id) !== id);
+            window.SENTRY_CRITICAL_ALERTS?.render({
+                container: stack,
+                alerts: state.criticalAlerts,
+                actionLabel: 'Cedular evento',
+                getName: (alert) => alert?.objetivoNombre || `Objetivo ${alert?.objetivoId ?? ''}`,
+                getDescription: () => 'Se detectó un evento crítico para este objetivo.',
+                onClose: (alert) => {
+                    const id = String(alert?.id || '');
+                    state.criticalAlerts = state.criticalAlerts.filter((item) => String(item.id) !== id);
                     if (state.criticalAlerts.length > 0) {
                         state.lastFocusedCriticalObjetivoId = state.criticalAlerts[state.criticalAlerts.length - 1].objetivoId;
                     } else {
                         state.lastFocusedCriticalObjetivoId = null;
                     }
                     renderCriticalAlerts();
-                });
-            });
-
-            stack.querySelectorAll('.critical-alert-cedular').forEach((btn) => {
-                btn.addEventListener('click', async () => {
-                    const objetivoId = Number(btn.dataset.objetivoId || 0);
+                },
+                onAction: async (alert) => {
+                    const objetivoId = Number(alert?.objetivoId || 0);
                     if (!objetivoId) return;
 
-                    // Selecciona el evento más reciente de ese objetivo para abrir cedulación.
                     const ev = state.eventos.find((e) => Number(getEventoObjetivoId(e)) === objetivoId);
                     if (!ev?.idEvento) return;
                     state.selected.clear();
                     state.selected.add(Number(ev.idEvento));
                     updateBatchBar();
                     await openCedularModal();
-                });
+                },
             });
         }
 

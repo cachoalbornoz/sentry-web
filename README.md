@@ -114,6 +114,39 @@ Ejemplo de payload:
   - detalle (`/x/objetivos/{objetivo}`)
   - contactos (`/x/objetivos/contactos/{objetivo}`)
 
+### 6) Alertas críticas y sonido
+
+- Se implementó un stack visual compartido de alertas críticas reutilizado por:
+  - `resources/views/inicio.blade.php`
+  - `resources/views/objetivos.blade.php`
+- El stack ahora tiene una sola fuente de verdad para:
+  - posición fija desde mitad de pantalla,
+  - scroll vertical,
+  - orden con alertas más nuevas arriba,
+  - iconografía y estilo visual consistentes,
+  - sincronización con el estado de alertas activas.
+- La parte visual común quedó extraída a:
+  - `resources/views/components/critical-alert-stack.blade.php`
+- El render/comportamiento compartido quedó centralizado en:
+  - `resources/js/critical-alerts.js`
+- El sonido crítico quedó implementado con escalado progresivo de intensidad
+  inspirado en producción:
+  - usa el asset `public/sounds/alarmas/critico.wav`,
+  - arranca con volumen bajo,
+  - incrementa volumen con el paso del tiempo,
+  - luego acelera la cadencia de repetición,
+  - evita duplicación entre pestañas cuando el navegador soporta `navigator.locks`.
+- El control de audio quedó centralizado en:
+  - `resources/js/critical-sound.js`
+- Si el navegador bloquea autoplay, la app muestra un aviso global para habilitar
+  manualmente el sonido.
+- Estado validado hasta ahora:
+  - `http://sentry-web.test/sounds/alarmas/critico.wav` responde correctamente,
+  - el dashboard local autenticado ya incluye el markup del stack compartido y del
+    fallback de audio,
+  - queda pendiente la validación manual final del comportamiento audible en un flujo
+    real de evento crítico.
+
 ## Entorno local (Laragon)
 
 ### Hosts recomendados
@@ -298,7 +331,16 @@ timeouts internos al hacer `sentry-web -> api-sentry.test` dentro del mismo stac
   - conviene validar manualmente varios objetivos reales para ajustar formato de datos,
   - la interacción del modal quedó implementada, pero todavía requiere una ronda de QA
     visual/manual sobre navegación, tabs y contenido final.
-- Consolidar modal de eventos críticos (alineado a producción).
+- Alertas críticas:
+  - `Inicio` y `Objetivos` ya comparten el mismo stack de alertas críticas,
+  - la apariencia y el comportamiento quedaron centralizados para evitar divergencias,
+  - las diferencias entre pantallas quedan limitadas a la acción contextual del botón
+    (`Cedular evento` vs `Ver objetivo`).
+- Sonido crítico:
+  - ya quedó integrada la lógica base de audio y escalado de intensidad,
+  - ya se incorporó el `critico.wav` real en `sentry-web`,
+  - falta una validación manual final en navegador sobre autoplay, desbloqueo y
+    progresión audible de volumen/cadencia.
 - Continuar migración funcional de `front` a vistas Blade modulares.
 - Homogeneizar UI/UX entre `front` y `sentry-web` durante la transición.
 - Documentar decisiones de arquitectura por módulo a medida que se migra.

@@ -1,4 +1,6 @@
 import './bootstrap';
+import './critical-alerts';
+import './critical-sound';
 import './layout-shell';
 
 // Leaflet (local, sin depender de CDN bloqueables por el navegador)

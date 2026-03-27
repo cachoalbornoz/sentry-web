@@ -183,47 +183,6 @@
         @keyframes objetivos-spin {
             to { transform: rotate(360deg); }
         }
-        #objetivos-critical-alerts {
-            position: fixed;
-            left: 18px;
-            bottom: 18px;
-            z-index: 1100;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: min(320px, calc(100vw - 36px));
-            max-height: calc(100vh - 120px);
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding-right: 4px;
-        }
-        #objetivos-critical-alerts.hidden {
-            display: none;
-        }
-        .critical-alert-card {
-            border: 1px solid rgba(248, 113, 113, 0.28);
-            border-left: 3px solid rgba(248, 113, 113, 0.75);
-            background: rgba(15, 23, 42, 0.96);
-            box-shadow: 0 10px 24px rgb(2 6 23 / 0.45), 0 0 0 1px rgba(239, 68, 68, 0.08) inset;
-            border-radius: 12px;
-            padding: 10px 12px;
-        }
-        .critical-alert-icon {
-            display: inline-flex;
-            width: 20px;
-            height: 20px;
-            align-items: center;
-            justify-content: center;
-            color: #da1e28;
-            flex: 0 0 auto;
-        }
-        .critical-alert-action {
-            border: 1px solid #475569;
-            background: rgba(15, 23, 42, .78);
-            color: #fff;
-            padding: 7px 12px;
-            font-size: 13px;
-        }
         .objetivo-modal-backdrop {
             position: fixed;
             inset: 0;
@@ -466,7 +425,7 @@
         <div id="objetivos-grid" class="objetivos-grid hidden"></div>
     </section>
 
-    <div id="objetivos-critical-alerts" class="hidden"></div>
+    @include('components.critical-alert-stack', ['id' => 'objetivos-critical-alerts'])
 
     <div id="objetivo-modal-backdrop" class="objetivo-modal-backdrop hidden">
         <div class="objetivo-modal" role="dialog" aria-modal="true" aria-labelledby="objetivo-modal-headline">
@@ -669,47 +628,23 @@
             }
 
             function renderCriticalAlerts() {
-                if (!Array.isArray(state.criticalAlerts) || state.criticalAlerts.length === 0) {
-                    refs.criticalStack.classList.add('hidden');
-                    refs.criticalStack.innerHTML = '';
-                    return;
-                }
-
-                refs.criticalStack.classList.remove('hidden');
-                refs.criticalStack.innerHTML = [...state.criticalAlerts].reverse().map((alert) => `
-                    <div class="critical-alert-card">
-                        <div class="flex items-start justify-between gap-2">
-                            <div class="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                                <span class="critical-alert-icon">${renderStateIcon('critico', 20)}</span>
-                                Atención requerida en objetivo crítico
-                            </div>
-                            <button class="text-slate-400 hover:text-white text-sm leading-none critical-alert-close" data-id="${alert.id}">×</button>
-                        </div>
-                        <div class="mt-1 text-sm text-slate-200">${escapeHtml(alert.objetivoNombre)}</div>
-                        <div class="mt-1 text-xs text-slate-400">Se detectó un evento crítico para este objetivo.</div>
-                        <div class="mt-3">
-                            <button class="critical-alert-action critical-alert-open" type="button" data-objetivo-id="${alert.objetivoId}">
-                                Ver objetivo
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-
-                refs.criticalStack.querySelectorAll('.critical-alert-close').forEach((button) => {
-                    button.addEventListener('click', () => {
-                        const id = String(button.dataset.id || '');
+                window.SENTRY_CRITICAL_ALERTS?.render({
+                    container: refs.criticalStack,
+                    alerts: state.criticalAlerts,
+                    actionLabel: 'Ver objetivo',
+                    getName: (alert) => alert?.objetivoNombre || `Objetivo ${alert?.objetivoId ?? ''}`,
+                    getDescription: () => 'Se detectó un evento crítico para este objetivo.',
+                    onClose: (alert) => {
+                        const id = String(alert?.id || '');
                         state.criticalAlerts = state.criticalAlerts.filter((item) => String(item.id) !== id);
                         renderCriticalAlerts();
-                    });
-                });
-
-                refs.criticalStack.querySelectorAll('.critical-alert-open').forEach((button) => {
-                    button.addEventListener('click', () => {
-                        const objetivoId = Number(button.dataset.objetivoId || 0);
+                    },
+                    onAction: (alert) => {
+                        const objetivoId = Number(alert?.objetivoId || 0);
                         if (objetivoId) {
                             openObjetivoModal(objetivoId);
                         }
-                    });
+                    },
                 });
             }
 

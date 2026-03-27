@@ -26,6 +26,24 @@
 
     </div>
 
+    <div id="critical-sound-unlock" class="hidden fixed bottom-4 right-4 w-full max-w-sm rounded-xl border border-amber-500/35 bg-slate-950/95 p-4 shadow-2xl shadow-black/40" style="z-index: 1300;">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <div class="text-sm font-semibold text-amber-200">Sonido crítico bloqueado</div>
+                <div id="critical-sound-unlock-text" class="mt-1 text-sm text-slate-200">
+                    El navegador requiere una interacción para habilitar el audio crítico.
+                </div>
+                <div id="critical-sound-unlock-status" class="mt-2 text-xs text-slate-400"></div>
+            </div>
+            <button id="critical-sound-dismiss-btn" type="button" class="text-slate-400 hover:text-white" aria-label="Ocultar aviso">×</button>
+        </div>
+        <div class="mt-4 flex justify-end">
+            <button id="critical-sound-unlock-btn" type="button" class="inline-flex items-center rounded-md border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-100 hover:bg-amber-500/15">
+                Activar sonido
+            </button>
+        </div>
+    </div>
+
     <script>
         window.SENTRY_LAYOUT = {
             apiStatusUrl: @json(route('x.objetivos')),
