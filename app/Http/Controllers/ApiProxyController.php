@@ -138,6 +138,36 @@ class ApiProxyController extends Controller
         }
     }
 
+    public function objetivoEventos(Request $request, SentryApiClient $api, int $objetivo): JsonResponse
+    {
+        $token = (string) $request->session()->get('api_token');
+        try {
+            return response()->json($api->objetivoEventos($token, $objetivo, 10));
+        } catch (ConnectionException) {
+            return response()->json(['eventos' => [], 'stale' => true]);
+        } catch (RequestException $e) {
+            if (($e->response?->status() ?? 0) === 401) {
+                return $this->unauthorizedResponse($request);
+            }
+            throw $e;
+        }
+    }
+
+    public function objetivoZonas(Request $request, SentryApiClient $api, int $objetivo): JsonResponse
+    {
+        $token = (string) $request->session()->get('api_token');
+        try {
+            return response()->json($api->objetivoZonas($token, $objetivo));
+        } catch (ConnectionException) {
+            return response()->json(['data' => [], 'stale' => true]);
+        } catch (RequestException $e) {
+            if (($e->response?->status() ?? 0) === 401) {
+                return $this->unauthorizedResponse($request);
+            }
+            throw $e;
+        }
+    }
+
     public function guardarCedulacion(Request $request, SentryApiClient $api)
     {
         $token = (string) $request->session()->get('api_token');

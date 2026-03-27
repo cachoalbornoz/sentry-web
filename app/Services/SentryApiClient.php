@@ -114,6 +114,22 @@ class SentryApiClient
             ->json();
     }
 
+    public function objetivoEventos(string $token, int $objetivoId, int $cantidad = 10): array
+    {
+        return $this->request($token)
+            ->get("/objetivos/eventos/{$objetivoId}/{$cantidad}")
+            ->throw()
+            ->json();
+    }
+
+    public function objetivoZonas(string $token, int $objetivoId): array
+    {
+        return $this->request($token)
+            ->get("/objetivos/zonas/{$objetivoId}")
+            ->throw()
+            ->json();
+    }
+
     /**
      * @param array{eventos:int[],cedulacion_tipo_id:int,observaciones?:?string} $payload
      */

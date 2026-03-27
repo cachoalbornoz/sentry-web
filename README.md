@@ -168,8 +168,136 @@ php artisan serve
 En entorno Laragon normalmente no se usa `php artisan serve`, ya que Apache resuelve
 el host virtual directamente.
 
+## Diagnóstico operativo reciente (login inestable)
+
+> Nota rápida: si este problema reaparece en otra PC, revisar primero Apache/Laragon
+> (`hosts`, `httpd -S`, vhosts duplicados de `api-sentry.test` y `error.log`) antes
+> de volver a investigar cookies, CSRF o credenciales. En esta máquina, ese fue el
+> causal principal.
+
+### Síntoma observado
+
+- En navegador, `POST /login` termina en redirect a `/login` y en algunos casos `419 Page Expired`.
+- En Postman, el endpoint `POST http://api-sentry.test/login` responde correctamente con token.
+
+### Hallazgos confirmados
+
+- El problema principal no es de credenciales del usuario de testing.
+- Se detectaron timeouts intermitentes desde `sentry-web` hacia `api-sentry.test`:
+  - `ConnectionException`
+  - `cURL error 28` en `SentryApiClient::login()`.
+- También hubo inestabilidad de sesión/CSRF en navegador (caso `419`) al validar login.
+- Se confirmó además un falso positivo de `419` en pruebas por CLI cuando se sigue el
+  redirect de `POST /login` forzando nuevamente `POST` en `/login` (por ejemplo, con
+  `curl -L -X POST ...`). Con cookie jar normal, el flujo devuelve `302` y conserva
+  correctamente la sesión web.
+- Con credenciales válidas de testing se confirmó que:
+  - `POST http://api-sentry.test/login` responde `200` correctamente,
+  - el mismo login ejecutado desde una request web de `sentry-web` cae en
+    `ConnectionException` / `cURL error 28`,
+  - y el mismo cliente invocado por CLI desde Laravel responde bien.
+- Esto sugiere un problema del stack local al hacer una llamada HTTP desde
+  `sentry-web` hacia `api-sentry.test` dentro de la misma máquina/Apache, más que un
+  error de credenciales o de CSRF del formulario.
+- Al revisar la configuración real de Apache en Laragon se detectó que
+  `api-sentry.test` estaba declarado más de una vez en distintos `.conf`.
+- En el `error.log` de Apache apareció además:
+  - `AH00326: Server ran out of threads to serve requests`
+- Ese hallazgo es consistente con el síntoma observado: una request web a
+  `sentry-web.test` que intenta llamar por HTTP a `api-sentry.test` dentro del mismo
+  Apache local puede quedarse esperando recursos y terminar en timeout.
+
+### Acciones aplicadas
+
+- Ajuste de sesión para estabilizar cookies web:
+  - `SESSION_DRIVER=file`
+  - `SESSION_PATH=/`
+  - `SESSION_DOMAIN=sentry-web.test`
+  - `SESSION_SECURE_COOKIE=false`
+  - `SESSION_SAME_SITE=lax`
+- Limpieza de cache de framework tras cambios:
+  - `php artisan optimize:clear`
+- Mensajería de login más clara en `AuthWebController`:
+  - distingue timeout/conexión API vs credenciales inválidas.
+- Se revisó `hosts`, los VirtualHosts efectivos (`httpd -S`) y el `error.log` de Apache.
+- Se consolidó la configuración para dejar una sola definición de `api-sentry.test`.
+- Se reinició Apache con la configuración limpia.
+- Luego de la limpieza:
+  - `POST /login` volvió a redirigir correctamente a `dashboard`,
+  - `GET /dashboard` respondió `200`,
+  - y el dashboard cargó correctamente sus requests internas.
+
+### Estado actual
+
+- En esta PC el login web quedó estabilizado tras limpiar los VirtualHosts duplicados
+  de Apache y reiniciar Laragon/Apache.
+- La API y `sentry-web` siguen conviviendo en el mismo stack local, por lo que si el
+  problema reaparece conviene volver a revisar saturación de Apache o separar `api`
+  en otro proceso/puerto para descartar bloqueo intra-Apache.
+
+## Si Se Repite En Otra PC
+
+1. Verificar `C:\Windows\System32\drivers\etc\hosts`:
+   - `127.0.0.1 sentry-web.test`
+   - `127.0.0.1 api-sentry.test`
+2. Revisar el Apache activo con `httpd -S`.
+3. Confirmar que exista una sola definición de `api-sentry.test`.
+4. Si hay más de una, consolidar los `.conf` y reiniciar Apache.
+5. Revisar `error.log` de Apache buscando:
+   - `AH00326: Server ran out of threads to serve requests`
+   - reinicios abruptos o timeouts repetidos durante `POST /login`
+6. Recién después volver a revisar cookies/sesión/CSRF si el problema persiste.
+
+## Checklist Rápido Para PC De Casa
+
+Si al llegar a la otra PC el login vuelve a fallar con redirect a `/login`, timeout o
+`419`, revisar primero Apache antes que Laravel:
+
+1. Confirmar `hosts`:
+   - `127.0.0.1 sentry-web.test`
+   - `127.0.0.1 api-sentry.test`
+2. Ejecutar `httpd -S` en el Apache activo de Laragon.
+3. Buscar si `api-sentry.test` aparece más de una vez.
+4. Si está duplicado:
+   - dejar una sola definición efectiva de `api-sentry.test`,
+   - dejar `sentry-web.test` apuntando a `.../sentry-web/public`,
+   - reiniciar Apache/Laragon.
+5. Revisar `error.log` y buscar:
+   - `AH00326: Server ran out of threads to serve requests`
+   - `ConnectionException`
+   - `cURL error 28`
+6. Probar de nuevo:
+   - `GET /login`
+   - `POST /login`
+   - `GET /dashboard`
+
+### Causal Más Probable
+
+En esta PC el problema no terminó siendo credenciales ni CSRF: el causal más fuerte fue
+Apache local con VirtualHosts duplicados para `api-sentry.test`, lo que podía disparar
+timeouts internos al hacer `sentry-web -> api-sentry.test` dentro del mismo stack.
+
 ## Roadmap corto
 
+- `Objetivos`:
+  - ya existe una primera implementación web del módulo en `sentry-web`,
+  - incluye listado, búsqueda, contadores por estado, cards y modal de detalle,
+  - el modal ya contempla fichas `Datos`, `Contactos`, `Eventos` y `Zonas`.
+- Integración `Objetivos` en `sentry-web`:
+  - se agregaron proxies web para `GET /x/objetivos/eventos/{objetivo}` y
+    `GET /x/objetivos/zonas/{objetivo}`,
+  - se reutilizó el contrato real del `api` observado en producción:
+    - `GET /objetivos/{id}`
+    - `GET /objetivos/contactos/{id}`
+    - `GET /objetivos/eventos/{id}/{cantidad?}`
+    - `GET /objetivos/zonas/{id}`
+  - la pantalla ya renderiza el listado real de objetivos autenticados.
+- Estado actual de `Objetivos`:
+  - el módulo ya quedó funcional como base,
+  - falta seguir puliendo la UI para acercarla más a `front`/producción,
+  - conviene validar manualmente varios objetivos reales para ajustar formato de datos,
+  - la interacción del modal quedó implementada, pero todavía requiere una ronda de QA
+    visual/manual sobre navegación, tabs y contenido final.
 - Consolidar modal de eventos críticos (alineado a producción).
 - Continuar migración funcional de `front` a vistas Blade modulares.
 - Homogeneizar UI/UX entre `front` y `sentry-web` durante la transición.

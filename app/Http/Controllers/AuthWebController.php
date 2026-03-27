@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Services\SentryApiClient;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -22,6 +24,21 @@ class AuthWebController extends Controller
 
         try {
             $result = $api->login($data['email'], $data['password']);
+        } catch (ConnectionException) {
+            throw ValidationException::withMessages([
+                'email' => 'La API no responde en este momento. Intentá nuevamente.',
+            ]);
+        } catch (RequestException $e) {
+            $status = $e->response?->status() ?? 0;
+            $msg = 'No se pudo iniciar sesión. Verificá credenciales o rol.';
+            if ($status === 401 || $status === 422) {
+                $msg = 'Credenciales inválidas.';
+            } elseif ($status >= 500) {
+                $msg = 'La API devolvió un error interno. Intentá nuevamente.';
+            }
+            throw ValidationException::withMessages([
+                'email' => $msg,
+            ]);
         } catch (\Throwable $e) {
             throw ValidationException::withMessages([
                 'email' => 'No se pudo iniciar sesión. Verificá credenciales o rol.',
