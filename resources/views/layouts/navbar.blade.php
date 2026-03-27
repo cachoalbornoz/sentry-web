@@ -4,7 +4,6 @@
             <a href="{{ route('dashboard') }}" class="inline-flex items-center" aria-label="Ir a inicio">
                 <img src="{{ asset('isotipo-grises.svg') }}" alt="Sentry" class="h-8 w-auto object-contain opacity-90" style="transform: translateY(-1px);">
             </a>
-            <span class="h-6 w-[2px] bg-slate-700/80"></span>
             <nav class="ml-10 flex items-center gap-0 text-sm">
                 <a href="{{ route('dashboard') }}"
                    class="relative inline-flex items-end px-4 transition-colors {{ ($activeNav ?? '') === 'inicio' ? 'text-slate-100' : 'text-slate-200 hover:text-white' }}" style="height: 50px;">
