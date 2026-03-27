@@ -14,13 +14,13 @@
             flex-wrap: wrap;
             gap: 12px;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-end;
         }
         .objetivos-search {
-            width: min(420px, 100%);
-            height: 46px;
-            border: 1px solid #334155;
-            background: rgba(15, 23, 42, 0.82);
+            width: min(360px, 100%);
+            height: 42px;
+            border: 1px solid #2f3a4a;
+            background: rgba(15, 23, 42, 0.5);
             color: #fff;
             padding: 0 14px;
         }
@@ -78,22 +78,51 @@
             gap: 12px;
         }
         .objetivo-icon {
-            width: 38px;
-            height: 38px;
-            border-radius: 999px;
-            border: 2px solid currentColor;
+            width: 42px;
+            height: 42px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             flex: 0 0 auto;
         }
-        .objetivo-icon::after {
-            content: "";
-            width: 12px;
-            height: 12px;
-            border-radius: 999px;
-            background: currentColor;
-            opacity: .18;
+        .state-icon-svg {
+            display: block;
+            overflow: visible;
+        }
+        .state-icon-svg .state-hex {
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 4;
+            stroke-linejoin: round;
+        }
+        .state-icon-svg .state-hex-fill {
+            fill: currentColor;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linejoin: round;
+        }
+        .state-icon-svg .state-badge-bg {
+            fill: rgba(15, 23, 42, .96);
+            stroke: currentColor;
+            stroke-width: 2;
+        }
+        .state-icon-svg .state-mark {
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 3.4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .state-icon-svg .state-mark-solid {
+            fill: currentColor;
+            stroke: none;
+        }
+        .state-icon-svg .state-mark-contrast {
+            fill: none;
+            stroke: #f8fafc;
+            stroke-width: 4.4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
         .objetivo-card-body {
             display: flex;
@@ -129,10 +158,10 @@
             border-radius: 999px;
             background: currentColor;
         }
-        .estado-online { color: #60a5fa; }
-        .estado-critico { color: #f97316; }
-        .estado-offline { color: #c084fc; }
-        .estado-muerto { color: #fb7185; }
+        .estado-online { color: #4589ff; }
+        .estado-critico { color: #da1e28; }
+        .estado-offline { color: #f4f4f4; }
+        .estado-muerto { color: #ff832b; }
         .estado-desconocido { color: #94a3b8; }
         .objetivos-empty,
         .objetivos-loading {
@@ -153,6 +182,47 @@
         }
         @keyframes objetivos-spin {
             to { transform: rotate(360deg); }
+        }
+        #objetivos-critical-alerts {
+            position: fixed;
+            left: 18px;
+            bottom: 18px;
+            z-index: 1100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: min(320px, calc(100vw - 36px));
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 4px;
+        }
+        #objetivos-critical-alerts.hidden {
+            display: none;
+        }
+        .critical-alert-card {
+            border: 1px solid rgba(248, 113, 113, 0.28);
+            border-left: 3px solid rgba(248, 113, 113, 0.75);
+            background: rgba(15, 23, 42, 0.96);
+            box-shadow: 0 10px 24px rgb(2 6 23 / 0.45), 0 0 0 1px rgba(239, 68, 68, 0.08) inset;
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+        .critical-alert-icon {
+            display: inline-flex;
+            width: 20px;
+            height: 20px;
+            align-items: center;
+            justify-content: center;
+            color: #da1e28;
+            flex: 0 0 auto;
+        }
+        .critical-alert-action {
+            border: 1px solid #475569;
+            background: rgba(15, 23, 42, .78);
+            color: #fff;
+            padding: 7px 12px;
+            font-size: 13px;
         }
         .objetivo-modal-backdrop {
             position: fixed;
@@ -358,12 +428,8 @@
 
 @section('content')
     <section id="objetivos-page">
-        <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
+        <div class="rounded-xl border border-slate-800 bg-slate-900/25 p-4">
             <div class="objetivos-toolbar">
-                <div>
-                    <h1 class="text-xl font-semibold text-slate-100">Objetivos</h1>
-                    <p class="mt-2 text-sm text-slate-400">Listado general de objetivos con acceso rápido a datos, contactos, eventos y zonas.</p>
-                </div>
                 <input id="objetivos-search" class="objetivos-search" type="search" placeholder="Buscar por nombre o descripción">
             </div>
         </div>
@@ -400,6 +466,8 @@
         <div id="objetivos-grid" class="objetivos-grid hidden"></div>
     </section>
 
+    <div id="objetivos-critical-alerts" class="hidden"></div>
+
     <div id="objetivo-modal-backdrop" class="objetivo-modal-backdrop hidden">
         <div class="objetivo-modal" role="dialog" aria-modal="true" aria-labelledby="objetivo-modal-headline">
             <div class="objetivo-modal-header">
@@ -435,6 +503,7 @@
     <script>
         (() => {
             const OBJETIVOS_URL = @json(route('x.objetivos'));
+            const EVENTOS_LIST_URL = @json(route('x.eventos'));
             const DETALLE_URL = @json(route('x.objetivos.detalle', ['objetivo' => '__OBJETIVO__']));
             const CONTACTOS_URL = @json(route('x.objetivos.contactos', ['objetivo' => '__OBJETIVO__']));
             const EVENTOS_URL = @json(route('x.objetivos.eventos', ['objetivo' => '__OBJETIVO__']));
@@ -443,11 +512,13 @@
 
             const state = {
                 objetivos: [],
+                eventos: [],
                 filtered: [],
                 activeObjetivoId: null,
                 activeTab: 'datos',
                 searchTimer: null,
                 detailsById: {},
+                criticalAlerts: [],
             };
 
             const refs = {
@@ -467,6 +538,7 @@
                 statCritico: document.getElementById('stat-critico'),
                 statOffline: document.getElementById('stat-offline'),
                 statMuerto: document.getElementById('stat-muerto'),
+                criticalStack: document.getElementById('objetivos-critical-alerts'),
             };
 
             function escapeHtml(value) {
@@ -517,12 +589,48 @@
             function getEstadoInfo(estado) {
                 const key = String(estado || '').toUpperCase();
                 const map = {
-                    ONLINE: { label: 'En línea', className: 'estado-online' },
-                    CRITICO: { label: 'Crítico', className: 'estado-critico' },
-                    OFFLINE: { label: 'Inactivo', className: 'estado-offline' },
-                    MUERTO: { label: 'Sin señal', className: 'estado-muerto' },
+                    ONLINE: { label: 'En línea', className: 'estado-online', iconType: 'activo' },
+                    CRITICO: { label: 'Crítico', className: 'estado-critico', iconType: 'critico' },
+                    OFFLINE: { label: 'Inactivo', className: 'estado-offline', iconType: 'inactivo' },
+                    MUERTO: { label: 'Sin señal', className: 'estado-muerto', iconType: 'apagado' },
                 };
-                return map[key] || { label: 'Desconocido', className: 'estado-desconocido' };
+                return map[key] || { label: 'Desconocido', className: 'estado-desconocido', iconType: 'desconocido' };
+            }
+
+            function renderStateIcon(type, size = 48) {
+                const icons = {
+                    activo: `
+                        <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                        <circle class="state-badge-bg" cx="49" cy="46" r="8"></circle>
+                        <path class="state-mark" d="M45 46l3 3 6-6"></path>
+                    `,
+                    apagado: `
+                        <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                        <circle class="state-badge-bg" cx="49" cy="46" r="8"></circle>
+                        <path class="state-mark" d="M45 42l8 8"></path>
+                        <path class="state-mark" d="M53 42l-8 8"></path>
+                    `,
+                    inactivo: `
+                        <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                        <circle class="state-badge-bg" cx="49" cy="46" r="8"></circle>
+                        <path class="state-mark" d="M44 46h10"></path>
+                    `,
+                    critico: `
+                        <polygon class="state-hex-fill" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                        <path class="state-mark-contrast" d="M32 20v14"></path>
+                        <circle class="state-mark-solid" cx="32" cy="40" r="3.2" fill="#f8fafc"></circle>
+                    `,
+                    desconocido: `
+                        <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                        <circle class="state-mark-solid" cx="32" cy="29" r="4"></circle>
+                    `,
+                };
+
+                return `
+                    <svg class="state-icon-svg" width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                        ${icons[type] || icons.desconocido}
+                    </svg>
+                `;
             }
 
             function countEstados(objetivos) {
@@ -551,6 +659,80 @@
                 refs.statMuerto.textContent = String(counts.MUERTO);
             }
 
+            function getEventoObjetivoId(ev) {
+                return Number(ev?.idObjetivo ?? ev?.objetivoId ?? ev?.objetivo_id ?? 0);
+            }
+
+            function getObjetivoNameById(objetivoId) {
+                const objetivo = state.objetivos.find((item) => Number(item.id) === Number(objetivoId));
+                return objetivo?.nombre || objetivo?.descripcion || `Objetivo ${objetivoId}`;
+            }
+
+            function renderCriticalAlerts() {
+                if (!Array.isArray(state.criticalAlerts) || state.criticalAlerts.length === 0) {
+                    refs.criticalStack.classList.add('hidden');
+                    refs.criticalStack.innerHTML = '';
+                    return;
+                }
+
+                refs.criticalStack.classList.remove('hidden');
+                refs.criticalStack.innerHTML = [...state.criticalAlerts].reverse().map((alert) => `
+                    <div class="critical-alert-card">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                                <span class="critical-alert-icon">${renderStateIcon('critico', 20)}</span>
+                                Atención requerida en objetivo crítico
+                            </div>
+                            <button class="text-slate-400 hover:text-white text-sm leading-none critical-alert-close" data-id="${alert.id}">×</button>
+                        </div>
+                        <div class="mt-1 text-sm text-slate-200">${escapeHtml(alert.objetivoNombre)}</div>
+                        <div class="mt-1 text-xs text-slate-400">Se detectó un evento crítico para este objetivo.</div>
+                        <div class="mt-3">
+                            <button class="critical-alert-action critical-alert-open" type="button" data-objetivo-id="${alert.objetivoId}">
+                                Ver objetivo
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+                refs.criticalStack.querySelectorAll('.critical-alert-close').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        const id = String(button.dataset.id || '');
+                        state.criticalAlerts = state.criticalAlerts.filter((item) => String(item.id) !== id);
+                        renderCriticalAlerts();
+                    });
+                });
+
+                refs.criticalStack.querySelectorAll('.critical-alert-open').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        const objetivoId = Number(button.dataset.objetivoId || 0);
+                        if (objetivoId) {
+                            openObjetivoModal(objetivoId);
+                        }
+                    });
+                });
+            }
+
+            function syncCriticalAlerts() {
+                const criticalObjetivos = state.objetivos.filter((item) => String(item?.estado || '').toUpperCase() === 'CRITICO');
+                const eventosObjetivoIds = new Set(
+                    (state.eventos || [])
+                        .map((event) => getEventoObjetivoId(event))
+                        .filter((id) => Number.isFinite(id) && id > 0)
+                );
+
+                const nextAlerts = criticalObjetivos
+                    .filter((item) => eventosObjetivoIds.has(Number(item.id)))
+                    .map((item) => ({
+                        id: `critical-${item.id}`,
+                        objetivoId: Number(item.id),
+                        objetivoNombre: getObjetivoNameById(item.id),
+                    }));
+
+                state.criticalAlerts = nextAlerts;
+                renderCriticalAlerts();
+            }
+
             function renderGrid() {
                 if (!state.filtered.length) {
                     refs.grid.classList.add('hidden');
@@ -570,7 +752,7 @@
                     return `
                         <button class="objetivo-card" type="button" data-objetivo-id="${escapeHtml(objetivo.id)}">
                             <div class="objetivo-card-top">
-                                <div class="objetivo-icon ${info.className}"></div>
+                                <div class="objetivo-icon ${info.className}">${renderStateIcon(info.iconType, 42)}</div>
                                 <div class="objetivo-status ${info.className}">
                                     <span class="objetivo-status-dot"></span>
                                     <span>${escapeHtml(info.label)}</span>
@@ -817,6 +999,7 @@
                 refs.modalStatus.className = `objetivo-status ${info.className}`;
                 refs.modalStatus.innerHTML = `<span class="objetivo-status-dot"></span><span>${escapeHtml(info.label)}</span>`;
                 refs.modalIcon.className = `objetivo-icon ${info.className}`;
+                refs.modalIcon.innerHTML = renderStateIcon(info.iconType, 76);
                 refs.modalBackdrop.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
                 setActiveTab('datos');
@@ -830,21 +1013,36 @@
                 state.activeObjetivoId = null;
             }
 
-            async function loadObjetivos() {
-                refs.loading.classList.remove('hidden');
-                refs.empty.classList.add('hidden');
-                refs.grid.classList.add('hidden');
-
+            async function loadObjetivos(showLoading = true) {
+                if (showLoading) {
+                    refs.loading.classList.remove('hidden');
+                    refs.empty.classList.add('hidden');
+                    refs.grid.classList.add('hidden');
+                }
                 try {
                     const payload = await fetchJson(OBJETIVOS_URL, 12000);
                     state.objetivos = unwrapCollection(payload);
                     updateStats();
                     filterObjetivos();
+                    syncCriticalAlerts();
                 } catch (error) {
                     refs.empty.classList.remove('hidden');
                     refs.empty.textContent = error?.message || 'No se pudieron cargar los objetivos.';
                 } finally {
-                    refs.loading.classList.add('hidden');
+                    if (showLoading) {
+                        refs.loading.classList.add('hidden');
+                    }
+                }
+            }
+
+            async function loadEventosResumen() {
+                try {
+                    const payload = await fetchJson(EVENTOS_LIST_URL, 12000);
+                    state.eventos = Array.isArray(payload) ? payload : [];
+                    syncCriticalAlerts();
+                } catch (_) {
+                    state.eventos = [];
+                    syncCriticalAlerts();
                 }
             }
 
@@ -869,6 +1067,11 @@
             });
 
             loadObjetivos();
+            loadEventosResumen();
+            window.setInterval(() => {
+                loadObjetivos(false);
+                loadEventosResumen();
+            }, 15000);
         })();
     </script>
 @endpush

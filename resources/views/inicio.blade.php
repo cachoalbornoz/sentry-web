@@ -113,6 +113,73 @@
             border-radius: 12px;
             padding: 10px 12px;
         }
+        .critical-alert-icon {
+            display: inline-flex;
+            width: 20px;
+            height: 20px;
+            align-items: center;
+            justify-content: center;
+            color: #da1e28;
+            flex: 0 0 auto;
+        }
+        .dashboard-state-icon {
+            display: inline-flex;
+            width: 56px;
+            height: 56px;
+            align-items: center;
+            justify-content: center;
+            color: currentColor;
+        }
+        .dashboard-state-icon svg {
+            display: block;
+            overflow: visible;
+        }
+        .dashboard-state-icon .state-hex {
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 4;
+            stroke-linejoin: round;
+        }
+        .dashboard-state-icon .state-hex-fill {
+            fill: currentColor;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linejoin: round;
+        }
+        .dashboard-state-icon .state-badge-bg {
+            fill: rgba(15, 23, 42, .96);
+            stroke: currentColor;
+            stroke-width: 2;
+        }
+        .dashboard-state-icon .state-mark {
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 3.4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .dashboard-state-icon .state-mark-solid {
+            fill: currentColor;
+            stroke: none;
+        }
+        .dashboard-state-icon .state-mark-contrast {
+            fill: none;
+            stroke: #f8fafc;
+            stroke-width: 4.4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .icon-online { color: #4589ff; }
+        .icon-critico { color: #da1e28; }
+        .icon-offline { color: #f4f4f4; }
+        .icon-muerto { color: #ff832b; }
+        .state-icon-svg-inline {
+            display: inline-flex;
+            width: 20px;
+            height: 20px;
+            align-items: center;
+            justify-content: center;
+        }
         button {
             cursor: pointer;
             transition: background-color .18s ease, color .18s ease, border-color .18s ease, filter .18s ease;
@@ -132,7 +199,13 @@
                         <div class="text-sm font-medium">Objetivos críticos</div>
                         <div class="text-xs text-slate-400">Requieren atención inmediata</div>
                     </div>
-                    <div class="w-5 h-5 rounded-md" style="background:#ef4444;border:2px solid rgba(248,113,113,.55);box-shadow:0 0 10px rgba(239,68,68,.45);"></div>
+                    <div class="dashboard-state-icon icon-critico" aria-hidden="true">
+                        <svg width="56" height="56" viewBox="0 0 64 64">
+                            <polygon class="state-hex-fill" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                            <path class="state-mark-contrast" d="M32 20v14"></path>
+                            <circle cx="32" cy="40" r="3.2" fill="#f8fafc"></circle>
+                        </svg>
+                    </div>
                 </div>
                 <div class="mt-3 text-3xl font-semibold" id="count-critico">0</div>
             </div>
@@ -142,7 +215,13 @@
                         <div class="text-sm font-medium">Objetivos conectados</div>
                         <div class="text-xs text-slate-400">Comunicación activa</div>
                     </div>
-                    <div class="w-5 h-5 rounded-md" style="background:#38bdf8;border:2px solid rgba(125,211,252,.55);box-shadow:0 0 10px rgba(56,189,248,.45);"></div>
+                    <div class="dashboard-state-icon icon-online" aria-hidden="true">
+                        <svg width="56" height="56" viewBox="0 0 64 64">
+                            <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                            <circle class="state-badge-bg" cx="49" cy="46" r="8"></circle>
+                            <path class="state-mark" d="M45 46l3 3 6-6"></path>
+                        </svg>
+                    </div>
                 </div>
                 <div class="mt-3 text-3xl font-semibold" id="count-online">0</div>
             </div>
@@ -152,7 +231,13 @@
                         <div class="text-sm font-medium">Objetivo inactivo</div>
                         <div class="text-xs text-slate-400">Sin comunicación</div>
                     </div>
-                    <div class="w-5 h-5 rounded-md" style="background:#cbd5e1;border:2px solid rgba(226,232,240,.55);box-shadow:0 0 10px rgba(203,213,225,.4);"></div>
+                    <div class="dashboard-state-icon icon-offline" aria-hidden="true">
+                        <svg width="56" height="56" viewBox="0 0 64 64">
+                            <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                            <circle class="state-badge-bg" cx="49" cy="46" r="8"></circle>
+                            <path class="state-mark" d="M44 46h10"></path>
+                        </svg>
+                    </div>
                 </div>
                 <div class="mt-3 text-3xl font-semibold" id="count-offline">0</div>
             </div>
@@ -162,7 +247,14 @@
                         <div class="text-sm font-medium">Objetivos sin señal</div>
                         <div class="text-xs text-slate-400">Desconectados</div>
                     </div>
-                    <div class="w-5 h-5 rounded-md" style="background:#fb923c;border:2px solid rgba(253,186,116,.55);box-shadow:0 0 10px rgba(251,146,60,.45);"></div>
+                    <div class="dashboard-state-icon icon-muerto" aria-hidden="true">
+                        <svg width="56" height="56" viewBox="0 0 64 64">
+                            <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                            <circle class="state-badge-bg" cx="49" cy="46" r="8"></circle>
+                            <path class="state-mark" d="M45 42l8 8"></path>
+                            <path class="state-mark" d="M53 42l-8 8"></path>
+                        </svg>
+                    </div>
                 </div>
                 <div class="mt-3 text-3xl font-semibold" id="count-muerto">0</div>
             </div>
@@ -396,6 +488,38 @@
             return String(s).replace('T', ' ').replace('.000000Z', '');
         }
 
+        function renderStateIcon(type, size = 20) {
+            const icons = {
+                activo: `
+                    <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                    <circle class="state-badge-bg" cx="49" cy="46" r="8"></circle>
+                    <path class="state-mark" d="M45 46l3 3 6-6"></path>
+                `,
+                apagado: `
+                    <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                    <circle class="state-badge-bg" cx="49" cy="46" r="8"></circle>
+                    <path class="state-mark" d="M45 42l8 8"></path>
+                    <path class="state-mark" d="M53 42l-8 8"></path>
+                `,
+                inactivo: `
+                    <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                    <circle class="state-badge-bg" cx="49" cy="46" r="8"></circle>
+                    <path class="state-mark" d="M44 46h10"></path>
+                `,
+                critico: `
+                    <polygon class="state-hex-fill" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
+                    <path class="state-mark-contrast" d="M32 20v14"></path>
+                    <circle class="state-mark-solid" cx="32" cy="40" r="3.2" fill="#f8fafc"></circle>
+                `,
+            };
+
+            return `
+                <svg width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                    ${icons[type] || icons.critico}
+                </svg>
+            `;
+        }
+
         function normalizeObjetivo(o) {
             if (!o || typeof o !== 'object') return o;
 
@@ -484,11 +608,7 @@
                 <div class="critical-alert-card">
                     <div class="flex items-start justify-between gap-2">
                         <div class="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                            <span class="inline-flex h-5 w-5 items-center justify-center rounded-full" style="color:rgba(248,113,113,.75);border:1px solid rgba(248,113,113,.75);background:rgba(248,113,113,.08);">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round">
-                                    <path d="M6 6l12 12M18 6L6 18"></path>
-                                </svg>
-                            </span>
+                            <span class="critical-alert-icon">${renderStateIcon('critico', 20)}</span>
                             Atención requerida en objetivo crítico
                         </div>
                         <button class="text-slate-400 hover:text-white text-sm leading-none critical-alert-close" data-id="${a.id}">×</button>

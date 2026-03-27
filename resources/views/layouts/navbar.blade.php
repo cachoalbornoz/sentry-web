@@ -1,16 +1,29 @@
 <header class="w-full bg-[#0d0f14] px-3 py-2.5">
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-6">
-            <img src="{{ asset('isotipo-grises.svg') }}" alt="Sentry" class="h-5 w-auto object-contain opacity-90">
-            <span class="h-6 w-px bg-slate-700/80"></span>
-            <nav class="flex items-center gap-0.5 text-sm">
+        <div class="flex items-center gap-10">
+            <a href="{{ route('dashboard') }}" class="inline-flex items-center" aria-label="Ir a inicio">
+                <img src="{{ asset('isotipo-grises.svg') }}" alt="Sentry" class="h-8 w-auto object-contain opacity-90" style="transform: translateY(-6px);">
+            </a>
+            <span class="h-6 w-[2px] bg-slate-700/80"></span>
+            <nav class="ml-10 flex items-center gap-0 text-sm">
                 <a href="{{ route('dashboard') }}"
-                   class="inline-flex h-9 items-center border-b-2 px-3 {{ ($activeNav ?? '') === 'inicio' ? 'border-[#3b82f6] text-slate-100' : 'border-transparent text-slate-200 hover:text-white hover:border-slate-500' }}">
-                    Inicio
+                   class="relative inline-flex items-end px-4 transition-colors {{ ($activeNav ?? '') === 'inicio' ? 'text-slate-100' : 'text-slate-200 hover:text-white' }}" style="height: 50px;">
+                    &nbsp;
                 </a>
                 <a href="{{ route('objetivos') }}"
-                   class="inline-flex h-9 items-center border-b-2 px-3 {{ ($activeNav ?? '') === 'objetivos' ? 'border-[#3b82f6] text-slate-100' : 'border-transparent text-slate-200 hover:text-white hover:border-slate-500' }}">
-                    Objetivos
+                <a href="{{ route('dashboard') }}"
+                   class="relative inline-flex items-end px-4 transition-colors {{ ($activeNav ?? '') === 'inicio' ? 'text-slate-100' : 'text-slate-200 hover:text-white' }}" style="height: 50px;">
+                    <span>Inicio</span>
+                    @if (($activeNav ?? '') === 'inicio')
+                        <span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:8px;height:3px;background:#0f62fe;display:block;"></span>
+                    @endif
+                </a>
+                <a href="{{ route('objetivos') }}"
+                   class="relative inline-flex items-end px-4 transition-colors {{ ($activeNav ?? '') === 'objetivos' ? 'text-slate-100' : 'text-slate-200 hover:text-white' }}" style="height: 50px;">
+                    <span>Objetivos</span>
+                    @if (($activeNav ?? '') === 'objetivos')
+                        <span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:8px;height:3px;background:#0f62fe;display:block;"></span>
+                    @endif
                 </a>
             </nav>
         </div>
