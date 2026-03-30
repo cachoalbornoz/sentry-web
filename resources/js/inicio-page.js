@@ -42,6 +42,7 @@ function init() {
         lastFocusedCriticalObjetivoId: null,
         coordsHydrationInFlight: false,
         lastCoordsHydrationAt: 0,
+        mapHasInitialFit: false,
         eventosSort: { key: 'fecha', dir: 'desc' },
         eventosGroupByTipo: false,
         eventosCollapsedGroups: new Set(),
@@ -64,6 +65,19 @@ function init() {
     function filterEventosByScope(eventos) {
         return (Array.isArray(eventos) ? eventos : [])
             .filter((e) => isObjetivoAllowed(getEventoObjetivoId(e)));
+    }
+
+    function uniqueEventosById(eventos) {
+        const list = Array.isArray(eventos) ? eventos : [];
+        const byId = new Map();
+        for (const ev of list) {
+            const id = Number(ev?.idEvento || 0);
+            if (!Number.isFinite(id) || id <= 0) continue;
+            if (!byId.has(id)) {
+                byId.set(id, ev);
+            }
+        }
+        return [...byId.values()];
     }
 
     function normalizeObjetivo(o) {
@@ -117,11 +131,21 @@ function init() {
             const next = normalizeObjetivo(raw);
             const id = Number(next?.id || 0);
             const prev = currentById.get(id);
-            if (!hasCoords(next) && hasCoords(prev)) {
-                return { ...next, ubicacion: prev.ubicacion };
+            // Fusionar con prev para que payloads parciales (SSE/refresh) no borren estado u otros campos.
+            let merged = prev ? { ...prev, ...next } : { ...next };
+            if (!hasCoords(merged) && prev && hasCoords(prev)) {
+                merged = { ...merged, ubicacion: prev.ubicacion };
             }
-            return next;
+            return merged;
         });
+    }
+
+    function estadoKeyForMarker(estado) {
+        return String(estado ?? '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toUpperCase()
+            .trim();
     }
 
     function renderCriticalAlerts() {
@@ -188,6 +212,8 @@ function init() {
                 state.lastFocusedCriticalObjetivoId = state.criticalAlerts[state.criticalAlerts.length - 1].objetivoId;
             } else {
                 state.lastFocusedCriticalObjetivoId = null;
+                // Al salir de foco crítico, forzar reencuadre general.
+                state.mapHasInitialFit = false;
                 renderMarkers();
             }
             renderCriticalAlerts();
@@ -195,7 +221,7 @@ function init() {
     }
 
     function clearCriticalAlertsIfNoCriticalObjetivos() {
-        const hasAnyCritical = state.objetivos.some((o) => String(o?.estado || '').toUpperCase() === 'CRITICO');
+        const hasAnyCritical = state.objetivos.some((o) => estadoKeyForMarker(o?.estado) === 'CRITICO');
         if (!hasAnyCritical) {
             state.criticalAlerts = [];
             state.lastFocusedCriticalObjetivoId = null;
@@ -212,7 +238,7 @@ function init() {
         );
         const objetivosCriticos = new Set(
             (state.objetivos || [])
-                .filter((o) => String(o?.estado || '').toUpperCase() === 'CRITICO')
+                .filter((o) => estadoKeyForMarker(o?.estado) === 'CRITICO')
                 .map((o) => Number(o?.id || 0))
                 .filter((n) => Number.isFinite(n) && n > 0)
         );
@@ -234,6 +260,9 @@ function init() {
 
         if (state.criticalAlerts.length === 0) {
             state.lastFocusedCriticalObjetivoId = null;
+            // Si ya no hay críticas activas, volver al encuadre global.
+            state.mapHasInitialFit = false;
+            renderMarkers();
         } else if (
             !state.lastFocusedCriticalObjetivoId
             || !state.criticalAlerts.some((a) => Number(a.objetivoId) === Number(state.lastFocusedCriticalObjetivoId))
@@ -246,6 +275,7 @@ function init() {
     let map;
     let markersLayer;
     let tilesLayer;
+    const markersByObjetivoId = new Map();
 
     function focusMapOnObjetivo(objetivoId) {
         if (!map) return;
@@ -784,7 +814,7 @@ function init() {
     });
 
     function markerColorByEstado(estado) {
-        const st = String(estado || '').toUpperCase();
+        const st = estadoKeyForMarker(estado);
         if (st === 'CRITICO') return '#ef4444';
         if (st === 'ONLINE') return '#38bdf8';
         if (st === 'OFFLINE') return '#e5e7eb';
@@ -824,29 +854,83 @@ function init() {
 
     function renderMarkers() {
         if (!markersLayer) return;
-        markersLayer.clearLayers();
         let n = 0;
+        const nextIds = new Set();
+
+        const criticalObjetivoIds = new Set(
+            (state.criticalAlerts || [])
+                .map((a) => Number(a?.objetivoId || 0))
+                .filter((id) => Number.isFinite(id) && id > 0)
+        );
 
         for (const o of state.objetivos) {
             const obj = normalizeObjetivo(o);
+            const objetivoId = Number(obj?.id || 0);
             const lat = obj?.ubicacion?.latitud;
             const lon = obj?.ubicacion?.longitud;
-            if (typeof lat !== 'number' || typeof lon !== 'number') continue;
+            if (objetivoId <= 0 || typeof lat !== 'number' || typeof lon !== 'number') continue;
             n += 1;
-            const color = markerColorByEstado(obj.estado);
-            const icon = L.divIcon({
-                className: '',
-                html: `<div style="width:14px;height:14px;border-radius:999px;background:${color};box-shadow:0 0 0 2px rgba(0,0,0,.55), 0 0 14px ${color}55"></div>`,
-            });
-            const marker = L.marker([lat, lon], { icon, pane: 'markerPane' });
-            marker.bindPopup(`<div style="color:#0f172a"><b>${obj.nombre ?? obj.descripcion ?? 'Objetivo'}</b><br/>Estado: ${obj.estado ?? ''}</div>`);
-            marker.addTo(markersLayer);
+            nextIds.add(objetivoId);
+            const effectiveCritical = criticalObjetivoIds.has(objetivoId) || estadoKeyForMarker(obj.estado) === 'CRITICO';
+            const color = effectiveCritical ? '#ef4444' : markerColorByEstado(obj.estado);
+            const iconHtml = `<div style="width:14px;height:14px;border-radius:999px;background:${color};box-shadow:0 0 0 2px rgba(0,0,0,.55), 0 0 14px ${color}55"></div>`;
+            const popupHtml = `<div style="color:#0f172a"><b>${obj.nombre ?? obj.descripcion ?? 'Objetivo'}</b><br/>Estado: ${obj.estado ?? ''}</div>`;
+
+            const existing = markersByObjetivoId.get(objetivoId);
+            const marker = existing?.marker;
+            if (!marker) {
+                const icon = L.divIcon({
+                    className: '',
+                    html: iconHtml,
+                });
+                const created = L.marker([lat, lon], { icon, pane: 'markerPane' });
+                created.bindPopup(popupHtml);
+                created.addTo(markersLayer);
+                markersByObjetivoId.set(objetivoId, {
+                    marker: created,
+                    lat,
+                    lon,
+                    estado: String(obj.estado || ''),
+                    effectiveCritical,
+                    popupHtml,
+                });
+                continue;
+            }
+
+            if (existing.lat !== lat || existing.lon !== lon) {
+                marker.setLatLng([lat, lon]);
+            }
+            const estado = String(obj.estado || '');
+            const prevEffectiveCrit = existing.effectiveCritical === true;
+            const nextEffectiveCrit = effectiveCritical;
+            const visualKey = `${estado}|${nextEffectiveCrit ? '1' : '0'}`;
+            const prevVisualKey = `${existing.estado}|${prevEffectiveCrit ? '1' : '0'}`;
+            if (prevVisualKey !== visualKey) {
+                marker.setIcon(L.divIcon({ className: '', html: iconHtml }));
+            }
+            if (existing.popupHtml !== popupHtml) {
+                marker.setPopupContent(popupHtml);
+            }
+
+            existing.lat = lat;
+            existing.lon = lon;
+            existing.estado = estado;
+            existing.effectiveCritical = effectiveCritical;
+            existing.popupHtml = popupHtml;
+        }
+
+        for (const [id, item] of markersByObjetivoId.entries()) {
+            if (nextIds.has(id)) continue;
+            try {
+                markersLayer.removeLayer(item.marker);
+            } catch (_) {
+                // noop
+            }
+            markersByObjetivoId.delete(id);
         }
         document.getElementById('map-count').textContent = String(n);
 
-        if (state.lastFocusedCriticalObjetivoId) {
-            focusMapOnObjetivo(state.lastFocusedCriticalObjetivoId);
-        } else if (n > 0) {
+        if (!state.lastFocusedCriticalObjetivoId && n > 0 && !state.mapHasInitialFit) {
             const latLngs = [];
             for (const o of state.objetivos) {
                 const obj = normalizeObjetivo(o);
@@ -863,14 +947,19 @@ function init() {
                     duration: mapAnimation.resetDuration,
                     easeLinearity: mapAnimation.easeLinearity,
                 });
+                state.mapHasInitialFit = true;
             }
+        } else if (n === 0) {
+            state.mapHasInitialFit = false;
         }
     }
 
     async function refreshEventos() {
         const result = await fetchJsonWithTimeout(config.eventosUrl, {}, 6000).catch(() => ({ ok: false, data: null }));
         const data = result.data;
-        state.eventos = filterEventosByScope(Array.isArray(data) ? data : (Array.isArray(state.eventos) ? state.eventos : []));
+        state.eventos = uniqueEventosById(
+            filterEventosByScope(Array.isArray(data) ? data : (Array.isArray(state.eventos) ? state.eventos : []))
+        );
         document.getElementById('eventos-updated').textContent = new Date().toLocaleTimeString();
         syncCriticalAlertsWithEventos();
         renderEventos();
@@ -927,7 +1016,9 @@ function init() {
         const es = new EventSource(config.sseDashboardUrl);
         es.onmessage = () => {};
         es.addEventListener('init-eventos', (e) => {
-            try { state.eventos = filterEventosByScope(JSON.parse(e.data) ?? []); } catch {}
+            try {
+                state.eventos = uniqueEventosById(filterEventosByScope(JSON.parse(e.data) ?? []));
+            } catch {}
             document.getElementById('eventos-updated').textContent = new Date().toLocaleTimeString();
             syncCriticalAlertsWithEventos();
             renderEventos();
@@ -939,7 +1030,7 @@ function init() {
                 state.objetivos = mergeObjetivosPreservingCoords(state.objetivos, incoming);
                 for (const o of state.objetivos) {
                     const id = Number(o.id || 0);
-                    const curr = String(o.estado || '').toUpperCase();
+                    const curr = estadoKeyForMarker(o.estado);
                     if (id > 0 && curr === 'CRITICO') addCriticalAlert(id);
                 }
                 clearCriticalAlertsIfNoCriticalObjetivos();
@@ -951,7 +1042,9 @@ function init() {
         es.addEventListener('new-eventos', (e) => {
             try {
                 const ev = JSON.parse(e.data);
-                if (ev && isObjetivoAllowed(getEventoObjetivoId(ev))) state.eventos = [ev, ...state.eventos];
+                if (ev && isObjetivoAllowed(getEventoObjetivoId(ev))) {
+                    state.eventos = uniqueEventosById([ev, ...state.eventos]);
+                }
             } catch {}
             document.getElementById('eventos-updated').textContent = new Date().toLocaleTimeString();
             syncCriticalAlertsWithEventos();
@@ -968,12 +1061,12 @@ function init() {
                         const merged = { ...prev, ...up };
                         if (!hasCoords(merged) && hasCoords(prev)) merged.ubicacion = prev.ubicacion;
                         state.objetivos[idx] = merged;
-                        const prevState = String(prev?.estado || '').toUpperCase();
-                        const newState = String(merged?.estado || '').toUpperCase();
+                        const prevState = estadoKeyForMarker(prev?.estado);
+                        const newState = estadoKeyForMarker(merged?.estado);
                         if (newState === 'CRITICO' && prevState !== 'CRITICO') addCriticalAlert(Number(merged.id));
                     } else {
                         state.objetivos.push(up);
-                        if (String(up?.estado || '').toUpperCase() === 'CRITICO') addCriticalAlert(Number(up.id));
+                        if (estadoKeyForMarker(up?.estado) === 'CRITICO') addCriticalAlert(Number(up.id));
                     }
                     clearCriticalAlertsIfNoCriticalObjetivos();
                 }

@@ -10,10 +10,18 @@ export function objectiveRoute(template, objetivoId) {
     return String(template || '').replace('__OBJETIVO__', String(objetivoId));
 }
 
+function estadoKeyNormalized(estado) {
+    return String(estado ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase()
+        .trim();
+}
+
 export function countObjetivosByEstado(objetivos) {
     const counts = { ONLINE: 0, CRITICO: 0, OFFLINE: 0, MUERTO: 0 };
     for (const objetivo of objetivos || []) {
-        const key = String(objetivo?.estado || '').toUpperCase();
+        const key = estadoKeyNormalized(objetivo?.estado);
         if (Object.prototype.hasOwnProperty.call(counts, key)) {
             counts[key] += 1;
         }
