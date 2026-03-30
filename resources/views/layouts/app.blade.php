@@ -9,12 +9,35 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
 </head>
+@php
+    $apiUser = session('api_user');
+    $scopeKeys = ['objetivos_alcanzables_id', 'objetivos_accessibles_id', 'objetivosAlcanzablesId', 'objetivosAccesiblesId'];
+    $scopeRaw = null;
+    $hasObjetivoScope = false;
+    if (is_array($apiUser)) {
+        foreach ($scopeKeys as $key) {
+            if (array_key_exists($key, $apiUser)) {
+                $scopeRaw = $apiUser[$key];
+                $hasObjetivoScope = true;
+                break;
+            }
+        }
+    }
+    $allowedObjetivoIds = collect(is_array($scopeRaw) ? $scopeRaw : [])
+        ->map(fn ($id) => is_numeric($id) ? (int) $id : 0)
+        ->filter(fn ($id) => $id > 0)
+        ->unique()
+        ->values()
+        ->all();
+@endphp
 <body class="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6"
       data-api-status-url="{{ route('x.objetivos') }}"
       data-login-url="{{ route('login.form') }}"
       data-objetivos-url="{{ route('x.objetivos') }}"
       data-eventos-url="{{ route('x.eventos') }}"
-      data-dashboard-url="{{ route('dashboard') }}">
+      data-dashboard-url="{{ route('dashboard') }}"
+      data-has-objetivos-scope="{{ $hasObjetivoScope ? '1' : '0' }}"
+      data-allowed-objetivos-ids='@json($allowedObjetivoIds)'>
     <div class="w-full space-y-4">
         @include('layouts.navbar', ['activeNav' => $activeNav ?? ''])
         @include('layouts.profile-sidebar')

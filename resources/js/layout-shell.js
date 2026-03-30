@@ -4,12 +4,24 @@ import { bootWhenReady } from './shared/page-boot';
 
 function getLayoutConfig() {
     const body = document.body;
+    let allowedObjetivoIds = [];
+    try {
+        const parsed = JSON.parse(body?.dataset.allowedObjetivosIds || '[]');
+        if (Array.isArray(parsed)) {
+            allowedObjetivoIds = parsed;
+        }
+    } catch (_) {
+        allowedObjetivoIds = [];
+    }
+
     return {
         apiStatusUrl: body?.dataset.apiStatusUrl || window.SENTRY_LAYOUT?.apiStatusUrl || '',
         loginUrl: body?.dataset.loginUrl || window.SENTRY_LAYOUT?.loginUrl || '',
         objetivosUrl: body?.dataset.objetivosUrl || '',
         eventosUrl: body?.dataset.eventosUrl || '',
         dashboardUrl: body?.dataset.dashboardUrl || '',
+        hasObjetivoScope: String(body?.dataset.hasObjetivosScope || '') === '1',
+        allowedObjetivoIds,
     };
 }
 
@@ -50,15 +62,25 @@ function renderGlobalCriticalAlerts(alerts, dashboardUrl) {
     syncGlobalCriticalAlertsWithSound(alerts);
 }
 
-function buildCriticalAlerts(objetivos, eventos) {
+function buildCriticalAlerts(objetivos, eventos, hasObjetivoScope, allowedObjetivoIds) {
+    const allowedSet = new Set(
+        (Array.isArray(allowedObjetivoIds) ? allowedObjetivoIds : [])
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id) && id > 0)
+    );
+    const isAllowed = (objetivoId) => {
+        if (!hasObjetivoScope) return true;
+        return allowedSet.has(Number(objetivoId || 0));
+    };
+
     const objetivosConEvento = new Set(
         (eventos || [])
             .map((event) => getEventoObjetivoId(event))
-            .filter((id) => Number.isFinite(id) && id > 0)
+            .filter((id) => Number.isFinite(id) && id > 0 && isAllowed(id))
     );
 
     const objetivosCriticos = (objetivos || []).filter(
-        (item) => String(item?.estado || '').toUpperCase() === 'CRITICO'
+        (item) => String(item?.estado || '').toUpperCase() === 'CRITICO' && isAllowed(item?.id)
     );
 
     return objetivosCriticos
@@ -74,7 +96,14 @@ function buildCriticalAlerts(objetivos, eventos) {
 function initGlobalCriticalAlerts() {
     if (hasLocalCriticalController()) return;
 
-    const { objetivosUrl, eventosUrl, loginUrl, dashboardUrl } = getLayoutConfig();
+    const {
+        objetivosUrl,
+        eventosUrl,
+        loginUrl,
+        dashboardUrl,
+        hasObjetivoScope,
+        allowedObjetivoIds,
+    } = getLayoutConfig();
     if (!objetivosUrl || !eventosUrl) return;
 
     let inFlight = false;
@@ -103,7 +132,7 @@ function initGlobalCriticalAlerts() {
 
             const objetivos = Array.isArray(objetivosRes.data?.data) ? objetivosRes.data.data : [];
             const eventos = Array.isArray(eventosRes.data) ? eventosRes.data : [];
-            const alerts = buildCriticalAlerts(objetivos, eventos);
+            const alerts = buildCriticalAlerts(objetivos, eventos, hasObjetivoScope, allowedObjetivoIds);
             renderGlobalCriticalAlerts(alerts, dashboardUrl);
         } catch (_) {
             renderGlobalCriticalAlerts([], dashboardUrl);

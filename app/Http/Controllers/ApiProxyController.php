@@ -10,6 +10,83 @@ use Illuminate\Http\JsonResponse;
 
 class ApiProxyController extends Controller
 {
+    /**
+     * @return array{0: array<int>, 1: bool}
+     */
+    private function objetivosScope(Request $request): array
+    {
+        $user = $request->session()->get('api_user');
+        if (!is_array($user)) {
+            return [[], false];
+        }
+
+        $candidateKeys = [
+            'objetivos_alcanzables_id',
+            'objetivos_accessibles_id',
+            'objetivosAlcanzablesId',
+            'objetivosAccesiblesId',
+        ];
+
+        foreach ($candidateKeys as $key) {
+            if (!array_key_exists($key, $user)) {
+                continue;
+            }
+
+            $raw = $user[$key];
+            if (!is_array($raw)) {
+                return [[], true];
+            }
+
+            $ids = array_values(array_unique(array_filter(array_map(
+                static fn ($id) => is_numeric($id) ? (int) $id : 0,
+                $raw
+            ), static fn (int $id) => $id > 0)));
+
+            return [$ids, true];
+        }
+
+        return [[], false];
+    }
+
+    private function objectiveIdFromEvent(mixed $event): int
+    {
+        if (!is_array($event)) {
+            return 0;
+        }
+
+        return (int) ($event['idObjetivo'] ?? $event['objetivoId'] ?? $event['objetivo_id'] ?? 0);
+    }
+
+    private function filterEventosByScope(array $eventos, array $allowedObjetivoIds, bool $hasScope): array
+    {
+        if (!$hasScope) {
+            return $eventos;
+        }
+        if (empty($allowedObjetivoIds)) {
+            return [];
+        }
+
+        $allowedMap = array_flip($allowedObjetivoIds);
+        return array_values(array_filter($eventos, fn ($event) => isset($allowedMap[$this->objectiveIdFromEvent($event)])));
+    }
+
+    private function filterObjetivosPayloadByScope(array $payload, array $allowedObjetivoIds, bool $hasScope): array
+    {
+        if (!$hasScope) {
+            return $payload;
+        }
+
+        $allowedMap = array_flip($allowedObjetivoIds);
+        $data = is_array($payload['data'] ?? null) ? $payload['data'] : [];
+        $payload['data'] = array_values(array_filter($data, static fn ($item) => isset($allowedMap[(int) ($item['id'] ?? 0)])));
+        return $payload;
+    }
+
+    private function canAccessObjetivo(int $objetivoId, array $allowedObjetivoIds, bool $hasScope): bool
+    {
+        return !$hasScope || in_array($objetivoId, $allowedObjetivoIds, true);
+    }
+
     private function unauthorizedResponse(Request $request): JsonResponse
     {
         $request->session()->forget([
@@ -29,9 +106,11 @@ class ApiProxyController extends Controller
     public function eventos(Request $request, SentryApiClient $api)
     {
         $token = (string) $request->session()->get('api_token');
+        [$allowedObjetivoIds, $hasScope] = $this->objetivosScope($request);
         try {
             $payload = $api->eventos($token);
             $events = is_array($payload) ? $payload : [];
+            $events = $this->filterEventosByScope($events, $allowedObjetivoIds, $hasScope);
             $request->session()->put('last_eventos_payload', $events);
             $request->session()->put('last_eventos_ok_at', now()->toIso8601String());
 
@@ -54,8 +133,12 @@ class ApiProxyController extends Controller
     public function objetivos(Request $request, SentryApiClient $api)
     {
         $token = (string) $request->session()->get('api_token');
+        [$allowedObjetivoIds, $hasScope] = $this->objetivosScope($request);
         try {
             $payload = $api->objetivos($token);
+            if (is_array($payload)) {
+                $payload = $this->filterObjetivosPayloadByScope($payload, $allowedObjetivoIds, $hasScope);
+            }
             $request->session()->put('last_objetivos_payload', $payload);
             $request->session()->put('last_objetivos_ok_at', now()->toIso8601String());
 
@@ -147,6 +230,10 @@ class ApiProxyController extends Controller
     public function objetivoContactos(Request $request, SentryApiClient $api, int $objetivo): JsonResponse
     {
         $token = (string) $request->session()->get('api_token');
+        [$allowedObjetivoIds, $hasScope] = $this->objetivosScope($request);
+        if (!$this->canAccessObjetivo($objetivo, $allowedObjetivoIds, $hasScope)) {
+            return response()->json(['message' => 'Objetivo no alcanzable.'], 404);
+        }
         try {
             return response()->json($api->objetivoContactos($token, $objetivo));
         } catch (ConnectionException) {
@@ -162,6 +249,10 @@ class ApiProxyController extends Controller
     public function objetivoDetalle(Request $request, SentryApiClient $api, int $objetivo): JsonResponse
     {
         $token = (string) $request->session()->get('api_token');
+        [$allowedObjetivoIds, $hasScope] = $this->objetivosScope($request);
+        if (!$this->canAccessObjetivo($objetivo, $allowedObjetivoIds, $hasScope)) {
+            return response()->json(['message' => 'Objetivo no alcanzable.'], 404);
+        }
         try {
             return response()->json($api->objetivoDetalle($token, $objetivo));
         } catch (ConnectionException) {
@@ -177,6 +268,10 @@ class ApiProxyController extends Controller
     public function objetivoEventos(Request $request, SentryApiClient $api, int $objetivo): JsonResponse
     {
         $token = (string) $request->session()->get('api_token');
+        [$allowedObjetivoIds, $hasScope] = $this->objetivosScope($request);
+        if (!$this->canAccessObjetivo($objetivo, $allowedObjetivoIds, $hasScope)) {
+            return response()->json(['eventos' => []], 200);
+        }
         try {
             return response()->json($api->objetivoEventos($token, $objetivo, 10));
         } catch (ConnectionException) {
@@ -192,6 +287,10 @@ class ApiProxyController extends Controller
     public function objetivoZonas(Request $request, SentryApiClient $api, int $objetivo): JsonResponse
     {
         $token = (string) $request->session()->get('api_token');
+        [$allowedObjetivoIds, $hasScope] = $this->objetivosScope($request);
+        if (!$this->canAccessObjetivo($objetivo, $allowedObjetivoIds, $hasScope)) {
+            return response()->json(['data' => []], 200);
+        }
         try {
             return response()->json($api->objetivoZonas($token, $objetivo));
         } catch (ConnectionException) {

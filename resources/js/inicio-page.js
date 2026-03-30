@@ -28,10 +28,16 @@ function init() {
     const USE_STADIA_BASEMAP = Boolean(config.useStadiaBasemap);
     const CONTACTOS_ROUTE_TEMPLATE = config.contactosRouteTemplate || '';
     const OBJETIVO_DETALLE_ROUTE_TEMPLATE = config.objetivoDetalleRouteTemplate || '';
+    const HAS_OBJETIVO_SCOPE = Boolean(config.hasObjetivoScope);
+    const ALLOWED_OBJETIVO_IDS = new Set(
+        (Array.isArray(config.allowedObjetivoIds) ? config.allowedObjetivoIds : [])
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id) && id > 0)
+    );
 
     const state = {
-        eventos: INITIAL_EVENTOS,
-        objetivos: INITIAL_OBJETIVOS,
+        eventos: filterEventosByScope(INITIAL_EVENTOS),
+        objetivos: filterObjetivosByScope(INITIAL_OBJETIVOS),
         selected: new Set(),
         cedulacionTipos: null,
         cedulacionObservaciones: null,
@@ -49,6 +55,24 @@ function init() {
         resetDuration: 8.4,
         easeLinearity: 0.14,
     };
+
+    function isObjetivoAllowed(objetivoId) {
+        const id = Number(objetivoId || 0);
+        if (!HAS_OBJETIVO_SCOPE) return true;
+        return ALLOWED_OBJETIVO_IDS.has(id);
+    }
+
+    function filterObjetivosByScope(objetivos) {
+        if (!HAS_OBJETIVO_SCOPE) return Array.isArray(objetivos) ? objetivos : [];
+        return (Array.isArray(objetivos) ? objetivos : [])
+            .filter((o) => isObjetivoAllowed(o?.id));
+    }
+
+    function filterEventosByScope(eventos) {
+        if (!HAS_OBJETIVO_SCOPE) return Array.isArray(eventos) ? eventos : [];
+        return (Array.isArray(eventos) ? eventos : [])
+            .filter((e) => isObjetivoAllowed(getEventoObjetivoId(e)));
+    }
 
     function normalizeObjetivo(o) {
         if (!o || typeof o !== 'object') return o;
@@ -854,7 +878,7 @@ function init() {
     async function refreshEventos() {
         const result = await fetchJsonWithTimeout(config.eventosUrl, {}, 6000).catch(() => ({ ok: false, data: null }));
         const data = result.data;
-        state.eventos = Array.isArray(data) ? data : (Array.isArray(state.eventos) ? state.eventos : []);
+        state.eventos = filterEventosByScope(Array.isArray(data) ? data : (Array.isArray(state.eventos) ? state.eventos : []));
         document.getElementById('eventos-updated').textContent = new Date().toLocaleTimeString();
         syncCriticalAlertsWithEventos();
         renderEventos();
@@ -863,7 +887,7 @@ function init() {
     async function refreshObjetivos() {
         const result = await fetchJsonWithTimeout(config.objetivosUrl, {}, 6000).catch(() => ({ ok: false, data: null }));
         const data = result.data ?? {};
-        const incoming = Array.isArray(data?.data) ? data.data : [];
+        const incoming = filterObjetivosByScope(Array.isArray(data?.data) ? data.data : []);
         state.objetivos = mergeObjetivosPreservingCoords(state.objetivos, incoming);
         await hydrateObjetivosCoordsIfNeeded();
         renderCounts();
@@ -906,7 +930,7 @@ function init() {
         const es = new EventSource(config.sseDashboardUrl);
         es.onmessage = () => {};
         es.addEventListener('init-eventos', (e) => {
-            try { state.eventos = JSON.parse(e.data) ?? []; } catch {}
+            try { state.eventos = filterEventosByScope(JSON.parse(e.data) ?? []); } catch {}
             document.getElementById('eventos-updated').textContent = new Date().toLocaleTimeString();
             syncCriticalAlertsWithEventos();
             renderEventos();
@@ -914,7 +938,7 @@ function init() {
         es.addEventListener('init-objetivos', (e) => {
             try {
                 const arr = JSON.parse(e.data) ?? [];
-                const incoming = Array.isArray(arr) ? arr : [];
+                const incoming = filterObjetivosByScope(Array.isArray(arr) ? arr : []);
                 state.objetivos = mergeObjetivosPreservingCoords(state.objetivos, incoming);
                 for (const o of state.objetivos) {
                     const id = Number(o.id || 0);
@@ -930,7 +954,7 @@ function init() {
         es.addEventListener('new-eventos', (e) => {
             try {
                 const ev = JSON.parse(e.data);
-                if (ev) state.eventos = [ev, ...state.eventos];
+                if (ev && isObjetivoAllowed(getEventoObjetivoId(ev))) state.eventos = [ev, ...state.eventos];
             } catch {}
             document.getElementById('eventos-updated').textContent = new Date().toLocaleTimeString();
             syncCriticalAlertsWithEventos();
@@ -939,6 +963,7 @@ function init() {
         es.addEventListener('new-objetivos', (e) => {
             try {
                 const up = normalizeObjetivo(JSON.parse(e.data));
+                if (!isObjetivoAllowed(up?.id)) return;
                 if (up?.id) {
                     const idx = state.objetivos.findIndex((o) => Number(o.id) === Number(up.id));
                     if (idx >= 0) {

@@ -113,6 +113,14 @@ Ejemplo de payload:
   - listado (`/x/objetivos`)
   - detalle (`/x/objetivos/{objetivo}`)
   - contactos (`/x/objetivos/contactos/{objetivo}`)
+- Modelo de accesibilidad (nueva etapa):
+  - la fuente de verdad del filtro de visibilidad vive en API (`objetivos_alcanzables_id`),
+  - la web consume payload filtrado y agrega validación defensiva para evitar mostrar
+    objetivos/eventos fuera de alcance si el contrato llega incompleto en una transición
+    de ramas.
+- Escenario sin alcance:
+  - si el usuario no tiene objetivos alcanzables, `Inicio` y `Objetivos` muestran estado
+    vacío funcional (sin error bloqueante).
 
 ### 6) Alertas críticas y sonido
 
@@ -471,6 +479,11 @@ timeouts internos al hacer `sentry-web -> api-sentry.test` dentro del mismo stac
   - ya existe una primera implementación web del módulo en `sentry-web`,
   - incluye listado, búsqueda, contadores por estado, cards y modal de detalle,
   - el modal ya contempla fichas `Datos`, `Contactos`, `Eventos` y `Zonas`.
+- Accesibilidad por usuario (objetivos alcanzables):
+  - se integró consumo filtrado para objetivos/eventos desde API en la capa web,
+  - la UI mantiene estado vacío cuando el alcance es nulo,
+  - el flujo SSE/alertas críticas en `Inicio` quedó ajustado para no exponer objetivos
+    fuera del alcance del usuario.
 - Integración `Objetivos` en `sentry-web`:
   - se agregaron proxies web para `GET /x/objetivos/eventos/{objetivo}` y
     `GET /x/objetivos/zonas/{objetivo}`,
@@ -491,6 +504,7 @@ timeouts internos al hacer `sentry-web -> api-sentry.test` dentro del mismo stac
   - la apariencia y el comportamiento quedaron centralizados para evitar divergencias,
   - las diferencias entre pantallas quedan limitadas a la acción contextual del botón
     (`Cedular evento` vs `Ver objetivo`).
+  - con alcance filtrado por usuario, solo se notifican críticas de objetivos alcanzables.
 - Sonido crítico:
   - ya quedó integrada la lógica base de audio y escalado de intensidad,
   - ya se incorporó el `critico.wav` real en `sentry-web`,
@@ -499,3 +513,20 @@ timeouts internos al hacer `sentry-web -> api-sentry.test` dentro del mismo stac
 - Continuar migración funcional de `front` a vistas Blade modulares.
 - Homogeneizar UI/UX entre `front` y `sentry-web` durante la transición.
 - Documentar decisiones de arquitectura por módulo a medida que se migra.
+
+## QA rápido por perfiles (objetivos alcanzables)
+
+Para validar la integración de accesibilidad por usuario, probar con tres cuentas:
+
+1. **Perfil con alcance total**
+   - `GET /dashboard` muestra mapa/listado normal.
+   - `GET /objetivos` muestra cards y contadores con datos.
+   - Alertas críticas y sonido operan sobre objetivos visibles.
+2. **Perfil con alcance parcial**
+   - mapa/listados solo contienen subconjunto permitido.
+   - no aparecen objetivos fuera de `objetivos_alcanzables_id`.
+   - SSE (`new-eventos`/`new-objetivos`) no introduce elementos fuera de alcance.
+3. **Perfil sin alcance**
+   - `Inicio` sin objetivos/eventos visibles, sin errores de sesión.
+   - `Objetivos` muestra vacío funcional (mensaje de no disponibilidad).
+   - no aparecen alertas críticas de terceros objetivos.

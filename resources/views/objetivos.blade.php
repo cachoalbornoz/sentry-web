@@ -10,7 +10,9 @@
              data-contactos-url="{{ route('x.objetivos.contactos', ['objetivo' => '__OBJETIVO__']) }}"
              data-eventos-url="{{ route('x.objetivos.eventos', ['objetivo' => '__OBJETIVO__']) }}"
              data-zonas-url="{{ route('x.objetivos.zonas', ['objetivo' => '__OBJETIVO__']) }}"
-             data-login-url="{{ route('login.form') }}">
+             data-login-url="{{ route('login.form') }}"
+             data-has-objetivos-scope="{{ ($hasObjetivoScope ?? false) ? '1' : '0' }}"
+             data-allowed-objetivos-ids='@json($allowedObjetivoIds ?? [])'>
         <div class="rounded-xl border border-slate-800 bg-slate-900/25 p-4">
             <div class="objetivos-toolbar">
                 <input id="objetivos-search" class="objetivos-search" type="search" placeholder="Buscar por nombre o descripción">

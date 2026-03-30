@@ -19,6 +19,8 @@ function init(config) {
         eventosUrl: pageRoot?.dataset.eventosUrl || '',
         zonasUrl: pageRoot?.dataset.zonasUrl || '',
         loginUrl: pageRoot?.dataset.loginUrl || '',
+        hasObjetivoScope: String(pageRoot?.dataset.hasObjetivosScope || '') === '1',
+        allowedObjetivoIds: JSON.parse(pageRoot?.dataset.allowedObjetivosIds || '[]'),
     };
     if (!pageRoot || !resolvedConfig) return;
 
@@ -53,6 +55,29 @@ function init(config) {
         detailsById: {},
         criticalAlerts: [],
     };
+    const allowedObjetivoIds = new Set(
+        (Array.isArray(resolvedConfig.allowedObjetivoIds) ? resolvedConfig.allowedObjetivoIds : [])
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id) && id > 0)
+    );
+
+    function isObjetivoAllowed(objetivoId) {
+        const id = Number(objetivoId || 0);
+        if (!resolvedConfig.hasObjetivoScope) return true;
+        return allowedObjetivoIds.has(id);
+    }
+
+    function filterObjetivosByScope(items) {
+        if (!Array.isArray(items)) return [];
+        if (!resolvedConfig.hasObjetivoScope) return items;
+        return items.filter((item) => isObjetivoAllowed(item?.id));
+    }
+
+    function filterEventosByScope(items) {
+        if (!Array.isArray(items)) return [];
+        if (!resolvedConfig.hasObjetivoScope) return items;
+        return items.filter((event) => isObjetivoAllowed(getEventoObjetivoId(event)));
+    }
 
     const getEstadoInfo = (estado) => window.SENTRY_OBJETIVO_CARD?.getEstadoInfo(estado)
         || { label: 'Desconocido', className: 'estado-desconocido', iconType: 'desconocido' };
@@ -181,7 +206,7 @@ function init(config) {
                 loginUrl: resolvedConfig.loginUrl,
                 timeoutMs: 12000,
             });
-            state.objetivos = unwrapCollection(payload);
+            state.objetivos = filterObjetivosByScope(unwrapCollection(payload));
             updateStats();
             filterObjetivos();
             syncCriticalAlerts();
@@ -201,7 +226,7 @@ function init(config) {
                 loginUrl: resolvedConfig.loginUrl,
                 timeoutMs: 12000,
             });
-            state.eventos = Array.isArray(payload) ? payload : [];
+            state.eventos = filterEventosByScope(Array.isArray(payload) ? payload : []);
             syncCriticalAlerts();
         } catch (_) {
             state.eventos = [];

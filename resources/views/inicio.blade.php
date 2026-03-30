@@ -277,6 +277,8 @@
             'eventosUrl' => route('x.eventos'),
             'objetivosUrl' => route('x.objetivos'),
             'sseDashboardUrl' => route('x.sse.dashboard'),
+            'hasObjetivoScope' => $hasObjetivoScope ?? false,
+            'allowedObjetivoIds' => $allowedObjetivoIds ?? [],
             'csrfToken' => csrf_token(),
         ];
     @endphp
