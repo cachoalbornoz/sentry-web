@@ -235,6 +235,15 @@ Agregar en `C:\Windows\System32\drivers\etc\hosts`:
 Se recomienda mantener los `.conf` de proyecto versionados en
 `sentry-infra/dev/apache/` y cargarlos desde Apache con `IncludeOptional`.
 
+Archivos relevantes actualmente:
+
+- `sentry-infra/dev/apache/auto.sentry-web.test.conf`
+- `sentry-infra/dev/apache/auto.api-sentry.test.conf`
+- `sentry-infra/dev/apache/zzz.local-apache-tuning.conf`
+
+El último archivo concentra el ajuste local de performance para Laragon/Apache en
+Windows y debe quedar como fuente de verdad para replicar la corrección en otra PC.
+
 ## Variables de entorno clave (`.env`)
 
 Mínimas para operación local:
@@ -337,6 +346,63 @@ el host virtual directamente.
   problema reaparece conviene volver a revisar saturación de Apache o separar `api`
   en otro proceso/puerto para descartar bloqueo intra-Apache.
 
+### Ajuste posterior por lentitud general de pantallas
+
+Luego de estabilizar el login apareció un segundo síntoma distinto:
+
+- la API respondía rápido al consultarla directamente,
+- pero `sentry-web.test` se volvía muy lento al navegar `Inicio`, abrir cedulación o
+  dejar el dashboard abierto,
+- en una medición puntual `GET /dashboard` llegó a tardar ~52 segundos para responder.
+
+Hallazgos asociados:
+
+- el `error.log` de Apache seguía registrando:
+  - `AH00326: Server ran out of threads to serve requests`
+- los endpoints directos de API seguían respondiendo rápido (`eventos`, `objetivos`,
+  `cedulacion/getTipos`, `cedulacion/getObservaciones`), por lo que el cuello no estaba
+  en la API sino en Apache atendiendo simultáneamente:
+  - `sentry-web`,
+  - `api-sentry`,
+  - SSE del dashboard,
+  - polling/requests auxiliares.
+
+Acciones aplicadas en esta PC:
+
+- reinicio manual de Apache para liberar hilos saturados;
+- ajuste del MPM WinNT versionado en `sentry-infra/dev/apache/zzz.local-apache-tuning.conf`:
+  - `ThreadsPerChild 256`
+  - `KeepAlive On`
+  - `MaxKeepAliveRequests 100`
+  - `KeepAliveTimeout 2`
+- mantenimiento de:
+  - `AcceptFilter http none`
+  - `AcceptFilter https none`
+  - `EnableSendfile Off`
+  - `EnableMMAP Off`
+- agregado de tratamiento explícito para SSE en
+  `sentry-infra/dev/apache/auto.sentry-web.test.conf` sobre `/x/sse/dashboard`:
+  - `no-gzip`
+  - `no-buffering`
+  - `X-Accel-Buffering no`
+  - `Content-Type text/event-stream`
+  - `Cache-Control no-cache`
+
+Resultado inmediato observado tras aplicar el ajuste:
+
+- `GET /login` respondió alrededor de `0.08s`
+- `GET /dashboard` volvió a responder alrededor de `0.33s`
+- los endpoints de cedulación siguieron respondiendo en tiempos bajos
+
+Conclusión práctica:
+
+- si en la PC de casa reaparece lentitud general, aunque la API responda bien por
+  separado, revisar primero saturación del Apache local y replicar este ajuste antes de
+  buscar problemas en Laravel, Blade o JavaScript.
+- el ajuste debe replicarse desde los archivos versionados de `sentry-infra/dev/apache/`
+  y no rehacerse manualmente en `httpd.conf`, salvo que el include del proyecto no esté
+  activo en esa máquina.
+
 ## Si Se Repite En Otra PC
 
 1. Verificar `C:\Windows\System32\drivers\etc\hosts`:
@@ -348,7 +414,12 @@ el host virtual directamente.
 5. Revisar `error.log` de Apache buscando:
    - `AH00326: Server ran out of threads to serve requests`
    - reinicios abruptos o timeouts repetidos durante `POST /login`
-6. Recién después volver a revisar cookies/sesión/CSRF si el problema persiste.
+6. Si no hay vhosts duplicados pero la app sigue lenta:
+   - reiniciar Apache,
+   - revisar `ThreadsPerChild`,
+   - bajar `KeepAliveTimeout`,
+   - revisar configuración SSE de `sentry-web.test`.
+7. Recién después volver a revisar cookies/sesión/CSRF si el problema persiste.
 
 ## Checklist Rápido Para PC De Casa
 
@@ -368,7 +439,12 @@ Si al llegar a la otra PC el login vuelve a fallar con redirect a `/login`, time
    - `AH00326: Server ran out of threads to serve requests`
    - `ConnectionException`
    - `cURL error 28`
-6. Probar de nuevo:
+6. Si no hay duplicados pero la web sigue lenta:
+   - verificar que Apache esté incluyendo `sentry-infra/dev/apache/*.conf`
+   - aplicar o copiar `sentry-infra/dev/apache/zzz.local-apache-tuning.conf`
+   - conservar la configuración SSE de `sentry-infra/dev/apache/auto.sentry-web.test.conf`
+   - reiniciar Apache.
+7. Probar de nuevo:
    - `GET /login`
    - `POST /login`
    - `GET /dashboard`

@@ -517,13 +517,28 @@ function init() {
     }
 
     async function ensureCedulacionPresets() {
+        const hasUsableRows = (payload) => Array.isArray(payload?.data) && payload.data.length > 0;
+        const warnings = [];
+
         if (!state.cedulacionTipos) {
             const tiposRes = await fetchJsonWithTimeout(config.cedulacionTiposUrl, {}, 6000);
-            state.cedulacionTipos = tiposRes.ok ? (tiposRes.data ?? { data: [] }) : { data: [] };
+            if (tiposRes.ok && (hasUsableRows(tiposRes.data) || !tiposRes.data?.stale)) {
+                state.cedulacionTipos = tiposRes.data ?? { data: [] };
+            } else if (!hasUsableRows(state.cedulacionTipos)) {
+                warnings.push(tiposRes.data?.message || 'No se pudieron cargar los tipos de señal.');
+            }
         }
         if (!state.cedulacionObservaciones) {
             const obsRes = await fetchJsonWithTimeout(config.cedulacionObservacionesUrl, {}, 6000);
-            state.cedulacionObservaciones = obsRes.ok ? (obsRes.data ?? { data: [] }) : { data: [] };
+            if (obsRes.ok && (hasUsableRows(obsRes.data) || !obsRes.data?.stale)) {
+                state.cedulacionObservaciones = obsRes.data ?? { data: [] };
+            } else if (!hasUsableRows(state.cedulacionObservaciones)) {
+                warnings.push(obsRes.data?.message || 'No se pudieron cargar las observaciones predefinidas.');
+            }
+        }
+
+        if (warnings.length > 0) {
+            throw new Error(warnings.join(' '));
         }
     }
 
@@ -620,10 +635,10 @@ function init() {
 
         try {
             await ensureCedulacionPresets();
-        } catch (_) {
-            state.cedulacionTipos = { data: [] };
-            state.cedulacionObservaciones = { data: [] };
-            showMsg('err', 'No se pudieron cargar tipos/observaciones. Reintentá en unos segundos.');
+        } catch (error) {
+            if (!state.cedulacionTipos) state.cedulacionTipos = { data: [] };
+            if (!state.cedulacionObservaciones) state.cedulacionObservaciones = { data: [] };
+            showMsg('err', error?.message || 'No se pudieron cargar tipos/observaciones. Reintentá en unos segundos.');
         }
 
         const tipos = state.cedulacionTipos?.data ?? [];

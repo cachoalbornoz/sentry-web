@@ -86,7 +86,25 @@ class ApiProxyController extends Controller
     {
         $token = (string) $request->session()->get('api_token');
         try {
-            return response()->json($api->cedulacionTipos($token));
+            $payload = $api->cedulacionTipos($token);
+            $request->session()->put('last_cedulacion_tipos_payload', $payload);
+            $request->session()->put('last_cedulacion_tipos_ok_at', now()->toIso8601String());
+
+            return response()->json($payload);
+        } catch (ConnectionException) {
+            $cached = $request->session()->get('last_cedulacion_tipos_payload');
+            if (is_array($cached)) {
+                return response()->json([
+                    ...$cached,
+                    'stale' => true,
+                ], 200, ['X-Sentry-Stale' => '1']);
+            }
+
+            return response()->json([
+                'data' => [],
+                'stale' => true,
+                'message' => 'Sin respuesta temporal de API para tipos de señal.',
+            ], 200, ['X-Sentry-Stale' => '1']);
         } catch (RequestException $e) {
             if (($e->response?->status() ?? 0) === 401) {
                 return $this->unauthorizedResponse($request);
@@ -99,7 +117,25 @@ class ApiProxyController extends Controller
     {
         $token = (string) $request->session()->get('api_token');
         try {
-            return response()->json($api->cedulacionObservaciones($token));
+            $payload = $api->cedulacionObservaciones($token);
+            $request->session()->put('last_cedulacion_observaciones_payload', $payload);
+            $request->session()->put('last_cedulacion_observaciones_ok_at', now()->toIso8601String());
+
+            return response()->json($payload);
+        } catch (ConnectionException) {
+            $cached = $request->session()->get('last_cedulacion_observaciones_payload');
+            if (is_array($cached)) {
+                return response()->json([
+                    ...$cached,
+                    'stale' => true,
+                ], 200, ['X-Sentry-Stale' => '1']);
+            }
+
+            return response()->json([
+                'data' => [],
+                'stale' => true,
+                'message' => 'Sin respuesta temporal de API para observaciones predefinidas.',
+            ], 200, ['X-Sentry-Stale' => '1']);
         } catch (RequestException $e) {
             if (($e->response?->status() ?? 0) === 401) {
                 return $this->unauthorizedResponse($request);
