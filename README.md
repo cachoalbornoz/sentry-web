@@ -116,19 +116,27 @@ Ejemplo de payload:
 
 ### 6) Alertas críticas y sonido
 
-- Se implementó un stack visual compartido de alertas críticas reutilizado por:
-  - `resources/views/inicio.blade.php`
-  - `resources/views/objetivos.blade.php`
+- Se implementó un stack visual compartido de alertas críticas y luego se evolucionó a
+  esquema global en layout:
+  - contenedor global en `resources/views/layouts/app.blade.php`
+  - fallback controlado para pantallas específicas cuando aplica
 - El stack ahora tiene una sola fuente de verdad para:
   - posición fija desde mitad de pantalla,
   - scroll vertical,
   - orden con alertas más nuevas arriba,
   - iconografía y estilo visual consistentes,
-  - sincronización con el estado de alertas activas.
+  - sincronización con el estado de alertas activas en cualquier opción del menú.
 - La parte visual común quedó extraída a:
   - `resources/views/components/critical-alert-stack.blade.php`
 - El render/comportamiento compartido quedó centralizado en:
   - `resources/js/critical-alerts.js`
+- La orquestación global de alertas (pantallas sin controlador propio de críticos) se
+  resolvió en:
+  - `resources/js/layout-shell.js`
+- Reconstrucción robusta de alertas al iniciar sesión/reconectar:
+  - en `Inicio`, la sincronización de críticas ya no depende del orden de llegada SSE
+    (`new-objetivos` vs `new-eventos`),
+  - si hay objetivos críticos con eventos sin cedular al relogin, vuelven a notificarse.
 - El sonido crítico quedó implementado con escalado progresivo de intensidad
   inspirado en producción:
   - usa el asset `public/sounds/alarmas/critico.wav`,
@@ -140,12 +148,14 @@ Ejemplo de payload:
   - `resources/js/critical-sound.js`
 - Si el navegador bloquea autoplay, la app muestra un aviso global para habilitar
   manualmente el sonido.
+- Se restauró el desbloqueo híbrido por interacción del usuario (gesto/click/tecla) para
+  evitar que el audio quede inactivo en sesiones posteriores.
 - Estado validado hasta ahora:
   - `http://sentry-web.test/sounds/alarmas/critico.wav` responde correctamente,
-  - el dashboard local autenticado ya incluye el markup del stack compartido y del
-    fallback de audio,
-  - queda pendiente la validación manual final del comportamiento audible en un flujo
-    real de evento crítico.
+  - las alertas críticas se visualizan desde cualquier pantalla del menú,
+  - al cerrar sesión y volver a ingresar, las críticas pendientes sin cedular se
+    reconstruyen y vuelven a notificarse,
+  - el sonido crítico volvió a disparar correctamente en pruebas manuales recientes.
 
 ## Limpieza y modularización reciente
 

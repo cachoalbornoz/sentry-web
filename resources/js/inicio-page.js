@@ -109,7 +109,8 @@ function init() {
     }
 
     function renderCriticalAlerts() {
-        const stack = document.getElementById('critical-alerts-stack');
+        const stack = document.getElementById('global-critical-alerts-stack')
+            || document.getElementById('critical-alerts-stack');
         window.SENTRY_CRITICAL_ALERTS?.render({
             container: stack,
             alerts: state.criticalAlerts,
@@ -188,21 +189,40 @@ function init() {
     }
 
     function syncCriticalAlertsWithEventos() {
-        if (!Array.isArray(state.eventos) || state.eventos.length === 0) {
-            state.criticalAlerts = [];
-            state.lastFocusedCriticalObjetivoId = null;
-            renderCriticalAlerts();
-            return;
-        }
-
         const objetivosConEvento = new Set(
-            state.eventos
+            (state.eventos || [])
                 .map((e) => Number(getEventoObjetivoId(e)))
                 .filter((n) => Number.isFinite(n) && n > 0)
         );
-        state.criticalAlerts = state.criticalAlerts.filter((a) => objetivosConEvento.has(Number(a.objetivoId)));
+        const objetivosCriticos = new Set(
+            (state.objetivos || [])
+                .filter((o) => String(o?.estado || '').toUpperCase() === 'CRITICO')
+                .map((o) => Number(o?.id || 0))
+                .filter((n) => Number.isFinite(n) && n > 0)
+        );
+
+        const targetIds = [...objetivosCriticos].filter((id) => objetivosConEvento.has(id));
+        const prevByObjetivoId = new Map(
+            (state.criticalAlerts || []).map((alert) => [Number(alert.objetivoId), alert])
+        );
+
+        state.criticalAlerts = targetIds.map((objetivoId) => {
+            const prev = prevByObjetivoId.get(Number(objetivoId));
+            return {
+                id: prev?.id || `${Date.now()}-${objetivoId}`,
+                objetivoId,
+                objetivoNombre: getObjetivoNameById(state.objetivos, objetivoId),
+                createdAt: prev?.createdAt || Date.now(),
+            };
+        });
+
         if (state.criticalAlerts.length === 0) {
             state.lastFocusedCriticalObjetivoId = null;
+        } else if (
+            !state.lastFocusedCriticalObjetivoId
+            || !state.criticalAlerts.some((a) => Number(a.objetivoId) === Number(state.lastFocusedCriticalObjetivoId))
+        ) {
+            state.lastFocusedCriticalObjetivoId = state.criticalAlerts[state.criticalAlerts.length - 1].objetivoId;
         }
         renderCriticalAlerts();
     }

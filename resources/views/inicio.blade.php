@@ -160,9 +160,6 @@
             </section>
         </div>
 
-    {{-- Alertas críticas apiladas (bottom-left) --}}
-    @include('components.critical-alert-stack', ['id' => 'critical-alerts-stack'])
-
     {{-- Modal cedulación --}}
     <div id="cedular-modal" class="hidden fixed inset-0 z-4000 p-4">
         <div class="absolute inset-0 z-4000 modal-backdrop"></div>

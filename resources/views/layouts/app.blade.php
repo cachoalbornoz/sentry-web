@@ -11,7 +11,10 @@
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6"
       data-api-status-url="{{ route('x.objetivos') }}"
-      data-login-url="{{ route('login.form') }}">
+      data-login-url="{{ route('login.form') }}"
+      data-objetivos-url="{{ route('x.objetivos') }}"
+      data-eventos-url="{{ route('x.eventos') }}"
+      data-dashboard-url="{{ route('dashboard') }}">
     <div class="w-full space-y-4">
         @include('layouts.navbar', ['activeNav' => $activeNav ?? ''])
         @include('layouts.profile-sidebar')
@@ -27,6 +30,8 @@
         </div>
 
     </div>
+
+    @include('components.critical-alert-stack', ['id' => 'global-critical-alerts-stack'])
 
     <div id="critical-sound-unlock" class="critical-sound-unlock hidden fixed bottom-4 right-4 w-full max-w-sm rounded-xl border border-amber-500/35 bg-slate-950/95 p-4 shadow-2xl shadow-black/40">
         <div class="flex items-start justify-between gap-3">

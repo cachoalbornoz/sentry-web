@@ -65,6 +65,14 @@ function createCriticalSoundController() {
         }
     }
 
+    function clearEnabledPreference() {
+        try {
+            window.localStorage.removeItem(SOUND_CONFIG.storageKey);
+        } catch (_) {
+            // Ignore storage errors in private/incognito contexts.
+        }
+    }
+
     function getPublicState() {
         return {
             activeCount: state.activeAlertIds.length,
@@ -228,7 +236,14 @@ function createCriticalSoundController() {
     }
 
     function startPlayback() {
-        if (state.playbackController || state.activeAlertIds.length === 0 || state.assetMissing || !readEnabledPreference()) {
+        if (state.playbackController || state.activeAlertIds.length === 0 || state.assetMissing) {
+            emitStateChange();
+            return;
+        }
+
+        if (!readEnabledPreference()) {
+            state.unlockRequired = true;
+            state.lastError = 'El sonido crítico quedó pendiente de reactivación.';
             emitStateChange();
             return;
         }
@@ -305,8 +320,17 @@ function createCriticalSoundController() {
 
     function dismissUnlockPrompt() {
         state.unlockRequired = false;
-        writeEnabledPreference(false);
+        state.enableRequested = false;
+        state.lastError = null;
+        clearEnabledPreference();
         stopPlayback();
+    }
+
+    function handleDocumentGesture() {
+        if (!state.unlockRequired) return;
+        if (state.enableRequested || state.assetMissing) return;
+        if (state.activeAlertIds.length === 0) return;
+        void enableWithGesture();
     }
 
     function bindUi() {
@@ -326,6 +350,11 @@ function createCriticalSoundController() {
         dismiss?.addEventListener('click', () => {
             dismissUnlockPrompt();
         });
+
+        // Recupera el comportamiento híbrido: cualquier gesto del usuario
+        // puede destrabar el audio si hay una alerta crítica activa.
+        document.addEventListener('pointerdown', handleDocumentGesture, true);
+        document.addEventListener('keydown', handleDocumentGesture, true);
 
         updateUi();
     }
@@ -353,6 +382,12 @@ function createCriticalSoundController() {
     }
 
     function init() {
+        // Migra deshabilitaciones persistentes previas para no dejar el
+        // sonido "muerto" sin una UI clara para reactivarlo.
+        if (!readEnabledPreference()) {
+            clearEnabledPreference();
+        }
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', bindUi, { once: true });
         } else {

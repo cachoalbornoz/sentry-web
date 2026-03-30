@@ -39,7 +39,8 @@ function init(config) {
         statCritico: document.getElementById('stat-critico'),
         statOffline: document.getElementById('stat-offline'),
         statMuerto: document.getElementById('stat-muerto'),
-        criticalStack: document.getElementById('objetivos-critical-alerts'),
+        criticalStack: document.getElementById('global-critical-alerts-stack')
+            || document.getElementById('objetivos-critical-alerts'),
     };
 
     const state = {

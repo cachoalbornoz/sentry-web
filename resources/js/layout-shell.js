@@ -1,4 +1,5 @@
 import { fetchJsonWithSession } from './shared/http';
+import { getEventoObjetivoId, getObjetivoNameById } from './shared/objetivo-utils';
 import { bootWhenReady } from './shared/page-boot';
 
 function getLayoutConfig() {
@@ -6,7 +7,115 @@ function getLayoutConfig() {
     return {
         apiStatusUrl: body?.dataset.apiStatusUrl || window.SENTRY_LAYOUT?.apiStatusUrl || '',
         loginUrl: body?.dataset.loginUrl || window.SENTRY_LAYOUT?.loginUrl || '',
+        objetivosUrl: body?.dataset.objetivosUrl || '',
+        eventosUrl: body?.dataset.eventosUrl || '',
+        dashboardUrl: body?.dataset.dashboardUrl || '',
     };
+}
+
+function hasLocalCriticalController() {
+    return Boolean(document.getElementById('inicio-page-config') || document.getElementById('objetivos-page'));
+}
+
+function syncGlobalCriticalAlertsWithSound(alerts) {
+    window.SENTRY_CRITICAL_SOUND?.syncCriticalAlerts(Array.isArray(alerts) ? alerts : []);
+}
+
+function renderGlobalCriticalAlerts(alerts, dashboardUrl) {
+    const stack = document.getElementById('global-critical-alerts-stack');
+    if (!stack) return;
+
+    window.SENTRY_CRITICAL_ALERTS?.render({
+        container: stack,
+        alerts,
+        actionLabel: 'Ir a Inicio',
+        getName: (alert) => alert?.objetivoNombre || `Objetivo ${alert?.objetivoId ?? ''}`,
+        getDescription: () => 'Se detectó un evento crítico sin cedular.',
+        onClose: () => {
+            // El stack global no descarta alertas de forma local;
+            // la fuente de verdad son objetivos/eventos del backend.
+        },
+        onAction: (alert) => {
+            const target = dashboardUrl || '/dashboard';
+            const id = Number(alert?.objetivoId || 0);
+            if (id > 0) {
+                window.location.href = `${target}#objetivo-${id}`;
+                return;
+            }
+            window.location.href = target;
+        },
+    });
+
+    // Defensa extra por si algún renderer falla: mantener el sonido sincronizado.
+    syncGlobalCriticalAlertsWithSound(alerts);
+}
+
+function buildCriticalAlerts(objetivos, eventos) {
+    const objetivosConEvento = new Set(
+        (eventos || [])
+            .map((event) => getEventoObjetivoId(event))
+            .filter((id) => Number.isFinite(id) && id > 0)
+    );
+
+    const objetivosCriticos = (objetivos || []).filter(
+        (item) => String(item?.estado || '').toUpperCase() === 'CRITICO'
+    );
+
+    return objetivosCriticos
+        .map((item) => Number(item?.id || 0))
+        .filter((id) => Number.isFinite(id) && id > 0 && objetivosConEvento.has(id))
+        .map((objetivoId) => ({
+            id: `global-critical-${objetivoId}`,
+            objetivoId,
+            objetivoNombre: getObjetivoNameById(objetivos, objetivoId),
+        }));
+}
+
+function initGlobalCriticalAlerts() {
+    if (hasLocalCriticalController()) return;
+
+    const { objetivosUrl, eventosUrl, loginUrl, dashboardUrl } = getLayoutConfig();
+    if (!objetivosUrl || !eventosUrl) return;
+
+    let inFlight = false;
+
+    const refresh = async () => {
+        if (inFlight) return;
+        inFlight = true;
+        try {
+            const [objetivosRes, eventosRes] = await Promise.all([
+                fetchJsonWithSession(objetivosUrl, {
+                    loginUrl,
+                    timeoutMs: 10000,
+                    options: { method: 'GET' },
+                }),
+                fetchJsonWithSession(eventosUrl, {
+                    loginUrl,
+                    timeoutMs: 10000,
+                    options: { method: 'GET' },
+                }),
+            ]);
+
+            if (!objetivosRes.ok || !eventosRes.ok) {
+                renderGlobalCriticalAlerts([], dashboardUrl);
+                return;
+            }
+
+            const objetivos = Array.isArray(objetivosRes.data?.data) ? objetivosRes.data.data : [];
+            const eventos = Array.isArray(eventosRes.data) ? eventosRes.data : [];
+            const alerts = buildCriticalAlerts(objetivos, eventos);
+            renderGlobalCriticalAlerts(alerts, dashboardUrl);
+        } catch (_) {
+            renderGlobalCriticalAlerts([], dashboardUrl);
+        } finally {
+            inFlight = false;
+        }
+    };
+
+    void refresh();
+    window.setInterval(() => {
+        void refresh();
+    }, 15000);
 }
 
 function startClock() {
@@ -86,6 +195,7 @@ function init() {
     startClock();
     initProfileMenu();
     initLogoutButtons();
+    initGlobalCriticalAlerts();
     checkApiConnection();
     if (getLayoutConfig().apiStatusUrl) {
         setInterval(checkApiConnection, 15000);

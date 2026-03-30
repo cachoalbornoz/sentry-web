@@ -49,8 +49,6 @@
         <div id="objetivos-grid" class="objetivos-grid hidden"></div>
     </section>
 
-    @include('components.critical-alert-stack', ['id' => 'objetivos-critical-alerts'])
-
     <div id="objetivo-modal-backdrop" class="objetivo-modal-backdrop hidden">
         <div class="objetivo-modal" role="dialog" aria-modal="true" aria-labelledby="objetivo-modal-headline">
             <div class="objetivo-modal-header">
