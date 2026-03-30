@@ -1,69 +1,13 @@
-function escapeHtml(value) {
-    return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-function normalizeText(value) {
-    return String(value ?? '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .trim();
-}
-
-function objectiveRoute(template, objetivoId) {
-    return template.replace('__OBJETIVO__', String(objetivoId));
-}
-
-function countEstados(objetivos) {
-    const counts = { ONLINE: 0, CRITICO: 0, OFFLINE: 0, MUERTO: 0 };
-    for (const objetivo of objetivos) {
-        const key = String(objetivo?.estado || '').toUpperCase();
-        if (Object.prototype.hasOwnProperty.call(counts, key)) {
-            counts[key] += 1;
-        }
-    }
-    return counts;
-}
-
-function unwrapCollection(payload) {
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload?.data)) return payload.data;
-    return [];
-}
-
-async function fetchJson(url, loginUrl, timeoutMs = 10000) {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-        const res = await fetch(url, {
-            method: 'GET',
-            headers: { Accept: 'application/json' },
-            cache: 'no-store',
-            signal: controller.signal,
-        });
-
-        const data = await res.json().catch(() => null);
-
-        if (res.status === 401 && data?.session_expired) {
-            window.location.href = loginUrl;
-            return null;
-        }
-
-        if (!res.ok) {
-            throw new Error(data?.message || `HTTP ${res.status}`);
-        }
-
-        return data;
-    } finally {
-        window.clearTimeout(timeout);
-    }
-}
+import { fetchRequiredJson } from './shared/http';
+import {
+    countObjetivosByEstado,
+    getEventoObjetivoId,
+    getObjetivoNameById,
+    normalizeText,
+    objectiveRoute,
+    unwrapCollection,
+} from './shared/objetivo-utils';
+import { bootWhenReady } from './shared/page-boot';
 
 function init(config) {
     const pageRoot = document.getElementById('objetivos-page');
@@ -126,11 +70,13 @@ function init(config) {
             eventos: resolvedConfig.eventosUrl,
             zonas: resolvedConfig.zonasUrl,
         },
-        fetchJson: (url, timeoutMs) => fetchJson(url, resolvedConfig.loginUrl, timeoutMs),
+        fetchJson: (url, timeoutMs) => fetchRequiredJson(url, {
+            loginUrl: resolvedConfig.loginUrl,
+            timeoutMs,
+        }),
         objectiveRoute,
         getEstadoInfo,
         renderStateIcon,
-        escapeHtml,
         unwrapCollection,
         renderDatosTab,
         renderTable,
@@ -140,21 +86,12 @@ function init(config) {
     const openObjetivoModal = (objetivoId) => modalController?.openObjetivoModal(objetivoId);
 
     function updateStats() {
-        const counts = countEstados(state.objetivos);
+        const counts = countObjetivosByEstado(state.objetivos);
         refs.statTotal.textContent = String(state.objetivos.length);
         refs.statOnline.textContent = String(counts.ONLINE);
         refs.statCritico.textContent = String(counts.CRITICO);
         refs.statOffline.textContent = String(counts.OFFLINE);
         refs.statMuerto.textContent = String(counts.MUERTO);
-    }
-
-    function getEventoObjetivoId(ev) {
-        return Number(ev?.idObjetivo ?? ev?.objetivoId ?? ev?.objetivo_id ?? 0);
-    }
-
-    function getObjetivoNameById(objetivoId) {
-        const objetivo = state.objetivos.find((item) => Number(item.id) === Number(objetivoId));
-        return objetivo?.nombre || objetivo?.descripcion || `Objetivo ${objetivoId}`;
     }
 
     function renderCriticalAlerts() {
@@ -191,7 +128,7 @@ function init(config) {
             .map((item) => ({
                 id: `critical-${item.id}`,
                 objetivoId: Number(item.id),
-                objetivoNombre: getObjetivoNameById(item.id),
+                objetivoNombre: getObjetivoNameById(state.objetivos, item.id),
             }));
 
         renderCriticalAlerts();
@@ -239,7 +176,10 @@ function init(config) {
         }
 
         try {
-            const payload = await fetchJson(resolvedConfig.objetivosUrl, resolvedConfig.loginUrl, 12000);
+            const payload = await fetchRequiredJson(resolvedConfig.objetivosUrl, {
+                loginUrl: resolvedConfig.loginUrl,
+                timeoutMs: 12000,
+            });
             state.objetivos = unwrapCollection(payload);
             updateStats();
             filterObjetivos();
@@ -256,7 +196,10 @@ function init(config) {
 
     async function loadEventosResumen() {
         try {
-            const payload = await fetchJson(resolvedConfig.eventosListUrl, resolvedConfig.loginUrl, 12000);
+            const payload = await fetchRequiredJson(resolvedConfig.eventosListUrl, {
+                loginUrl: resolvedConfig.loginUrl,
+                timeoutMs: 12000,
+            });
             state.eventos = Array.isArray(payload) ? payload : [];
             syncCriticalAlerts();
         } catch (_) {
@@ -284,6 +227,4 @@ window.SENTRY_OBJETIVOS_PAGE = {
     init,
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    init();
-});
+bootWhenReady('__sentryObjetivosPageInitialized', init);

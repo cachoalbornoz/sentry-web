@@ -1,3 +1,12 @@
+import { fetchJsonWithSession } from './shared/http';
+import {
+    countObjetivosByEstado,
+    getEventoObjetivoId,
+    getEventoObjetivoNombre,
+    getObjetivoNameById,
+} from './shared/objetivo-utils';
+import { bootWhenReady } from './shared/page-boot';
+
 function readInicioConfig() {
     const configEl = document.getElementById('inicio-page-config');
     if (!configEl) return null;
@@ -41,38 +50,6 @@ function init() {
         easeLinearity: 0.14,
     };
 
-    function renderStateIcon(type, size = 20) {
-        const icons = {
-            activo: `
-                <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
-                <circle class="state-badge-bg" cx="49" cy="46" r="8"></circle>
-                <path class="state-mark" d="M45 46l3 3 6-6"></path>
-            `,
-            apagado: `
-                <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
-                <circle class="state-badge-bg" cx="49" cy="46" r="8"></circle>
-                <path class="state-mark" d="M45 42l8 8"></path>
-                <path class="state-mark" d="M53 42l-8 8"></path>
-            `,
-            inactivo: `
-                <polygon class="state-hex" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
-                <circle class="state-badge-bg" cx="49" cy="46" r="8"></circle>
-                <path class="state-mark" d="M44 46h10"></path>
-            `,
-            critico: `
-                <polygon class="state-hex-fill" points="32,7 50,17 50,38 32,49 14,38 14,17"></polygon>
-                <path class="state-mark-contrast" d="M32 20v14"></path>
-                <circle class="state-mark-solid" cx="32" cy="40" r="3.2" fill="#f8fafc"></circle>
-            `,
-        };
-
-        return `
-            <svg class="state-icon-svg" width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-                ${icons[type] || icons.critico}
-            </svg>
-        `;
-    }
-
     function normalizeObjetivo(o) {
         if (!o || typeof o !== 'object') return o;
 
@@ -114,15 +91,6 @@ function init() {
         return o;
     }
 
-    function computeObjetivosStates(objetivos) {
-        const counts = { CRITICO: 0, ONLINE: 0, OFFLINE: 0, MUERTO: 0 };
-        for (const o of objetivos) {
-            const st = (o.estado || '').toUpperCase();
-            if (counts[st] !== undefined) counts[st] += 1;
-        }
-        return counts;
-    }
-
     function hasCoords(obj) {
         return !!(obj?.ubicacion && typeof obj.ubicacion.latitud === 'number' && typeof obj.ubicacion.longitud === 'number');
     }
@@ -138,19 +106,6 @@ function init() {
             }
             return next;
         });
-    }
-
-    function getEventoObjetivoId(ev) {
-        return Number(ev?.idObjetivo ?? ev?.objetivoId ?? ev?.objetivo_id ?? 0);
-    }
-
-    function getEventoObjetivoNombre(ev) {
-        return String(ev?.objetivo ?? ev?.objetivoNombre ?? ev?.nombreObjetivo ?? `Objetivo ${getEventoObjetivoId(ev)}`);
-    }
-
-    function getObjetivoNameById(objetivoId) {
-        const obj = state.objetivos.find((o) => Number(o.id) === Number(objetivoId));
-        return obj?.nombre ?? obj?.descripcion ?? `Objetivo ${objetivoId}`;
     }
 
     function renderCriticalAlerts() {
@@ -199,7 +154,7 @@ function init() {
         const alert = {
             id: `${Date.now()}-${objetivoId}`,
             objetivoId,
-            objetivoNombre: getObjetivoNameById(objetivoId),
+            objetivoNombre: getObjetivoNameById(state.objetivos, objetivoId),
             createdAt: Date.now(),
         };
         state.criticalAlerts.push(alert);
@@ -298,7 +253,7 @@ function init() {
     }
 
     function renderCounts() {
-        const c = computeObjetivosStates(state.objetivos);
+        const c = countObjetivosByEstado(state.objetivos);
         document.getElementById('count-critico').textContent = c.CRITICO ?? 0;
         document.getElementById('count-online').textContent = c.ONLINE ?? 0;
         document.getElementById('count-offline').textContent = c.OFFLINE ?? 0;
@@ -490,6 +445,7 @@ function init() {
         const bar = document.getElementById('batchbar');
         document.getElementById('selected-count').textContent = String(n);
         bar.classList.toggle('hidden', n === 0);
+        bar.classList.toggle('flex', n > 0);
     }
 
     function hookRowChecks() {
@@ -553,18 +509,11 @@ function init() {
     }
 
     async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 7000) {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-            const res = await fetch(url, { ...options, signal: controller.signal });
-            const data = await res.json().catch(() => null);
-            if (res.status === 401 && data?.session_expired) {
-                window.location.href = config.loginUrl;
-            }
-            return { ok: res.ok, status: res.status, data };
-        } finally {
-            clearTimeout(timer);
-        }
+        return fetchJsonWithSession(url, {
+            loginUrl: config.loginUrl,
+            timeoutMs,
+            options,
+        });
     }
 
     async function ensureCedulacionPresets() {
@@ -1005,4 +954,4 @@ function init() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', init);
+bootWhenReady('__sentryInicioPageInitialized', init);

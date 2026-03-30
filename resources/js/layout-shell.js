@@ -1,7 +1,5 @@
-if (window.__sentryLayoutShellInitialized) {
-    // Evita doble binding cuando existe fallback inline en layout.
-} else {
-    window.__sentryLayoutShellInitialized = true;
+import { fetchJsonWithSession } from './shared/http';
+import { bootWhenReady } from './shared/page-boot';
 
 function getLayoutConfig() {
     const body = document.body;
@@ -37,21 +35,16 @@ function setApiConnectionStatus(isConnected) {
 }
 
 async function checkApiConnection() {
-    const url = getLayoutConfig().apiStatusUrl;
+    const { apiStatusUrl, loginUrl } = getLayoutConfig();
+    const url = apiStatusUrl;
     if (!url) return;
     try {
-        const res = await fetch(url, {
-            method: 'GET',
-            headers: { Accept: 'application/json' },
-            cache: 'no-store',
+        const result = await fetchJsonWithSession(url, {
+            loginUrl,
+            timeoutMs: 8000,
+            options: { method: 'GET' },
         });
-        const data = await res.json().catch(() => null);
-        if (res.status === 401 && data?.session_expired) {
-            const loginUrl = getLayoutConfig().loginUrl;
-            if (loginUrl) window.location.href = loginUrl;
-            return;
-        }
-        setApiConnectionStatus(res.ok);
+        setApiConnectionStatus(result.ok);
     } catch (_) {
         setApiConnectionStatus(false);
     }
@@ -89,7 +82,7 @@ function initLogoutButtons() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function init() {
     startClock();
     initProfileMenu();
     initLogoutButtons();
@@ -97,5 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getLayoutConfig().apiStatusUrl) {
         setInterval(checkApiConnection, 15000);
     }
-});
 }
+
+bootWhenReady('__sentryLayoutShellInitialized', init);

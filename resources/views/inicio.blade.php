@@ -91,7 +91,7 @@
                     </div>
                 </div>
 
-                <div id="batchbar" class="hidden px-4 py-2 bg-blue-600/90 text-white text-sm flex items-center justify-between">
+                <div id="batchbar" class="hidden px-4 py-2 bg-blue-600/90 text-white text-sm items-center justify-between">
                     <div><span id="selected-count">0</span> evento(s) seleccionado(s)</div>
                     <div class="flex items-center gap-4">
                         <button id="open-cedular" class="cursor-pointer rounded-md border border-blue-200/50 bg-slate-900/35 px-3 py-1.5 font-medium text-white transition-colors duration-150 hover:bg-slate-900/55">
@@ -284,6 +284,6 @@
         ];
     @endphp
     <div id="inicio-page-config" hidden
-         data-config="{{ e(json_encode($inicioPageConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) }}"></div>
+         data-config='@json($inicioPageConfig)'></div>
 @endsection
 

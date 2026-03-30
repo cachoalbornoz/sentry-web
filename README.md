@@ -147,6 +147,75 @@ Ejemplo de payload:
   - queda pendiente la validación manual final del comportamiento audible en un flujo
     real de evento crítico.
 
+## Limpieza y modularización reciente
+
+### Objetivo de esta etapa
+
+- Reducir lógica inline en vistas Blade.
+- Consolidar helpers repetidos del frontend.
+- Eliminar plantillas sin uso para dejar una base más mantenible.
+
+### Estado actual de Blade
+
+- `resources/views/inicio.blade.php` ya no depende de bloques inline de CSS/JS para su
+  funcionamiento principal.
+- `resources/views/objetivos.blade.php` quedó apoyada en módulos JS dedicados y en el
+  componente compartido de alertas críticas.
+- A nivel de vistas activas ya no quedan `<style>` o `<script>` embebidos como fuente
+  principal de comportamiento de pantalla.
+
+### Estructura frontend consolidada
+
+- Entrada principal:
+  - `resources/js/app.js`
+- Módulos de página:
+  - `resources/js/inicio-page.js`
+  - `resources/js/objetivos-page.js`
+  - `resources/js/login-page.js`
+  - `resources/js/layout-shell.js`
+- Módulos UI reutilizables:
+  - `resources/js/critical-alerts.js`
+  - `resources/js/critical-sound.js`
+  - `resources/js/objetivo-card.js`
+  - `resources/js/objetivo-modal-content.js`
+  - `resources/js/objetivo-modal-controller.js`
+- Helpers compartidos incorporados en esta etapa:
+  - `resources/js/shared/page-boot.js`
+  - `resources/js/shared/http.js`
+  - `resources/js/shared/objetivo-utils.js`
+  - `resources/js/shared/html.js`
+
+### Qué quedó centralizado
+
+- Boot robusto de páginas con una sola estrategia compartida (`document.readyState` +
+  `DOMContentLoaded`) para evitar inicializaciones perdidas cuando el bundle carga tarde.
+- Fetch con timeout y manejo común de expiración de sesión para pantallas web.
+- Helpers de objetivos/eventos reutilizados entre `Inicio` y `Objetivos`:
+  - conteo por estado,
+  - resolución de `objetivoId`,
+  - nombre visible de objetivo,
+  - construcción de rutas parametrizadas,
+  - normalización básica de texto y colecciones.
+- Render seguro de HTML (`escapeHtml`) y formateo simple de valores visibles para evitar
+  duplicación en cards, modales y alertas.
+
+### Plantillas eliminadas por no uso
+
+- `resources/views/welcome.blade.php`
+- `resources/views/layouts/footer.blade.php`
+
+Se eliminaron luego de verificar que:
+
+- `/` redirige a `dashboard` y no usa la welcome por defecto de Laravel.
+- El layout principal autenticado no incluye footer compartido.
+
+### Validación posterior a la limpieza
+
+- `npm run build` compila correctamente luego de la externalización y refactor.
+- La carga de `Inicio` volvió a quedar funcional con mapa, eventos, SSE y cedulación.
+- `Objetivos` mantiene búsqueda, contadores, modal y alertas compartidas.
+- No se detectaron errores de lint en los módulos JS recientemente reorganizados.
+
 ## Entorno local (Laragon)
 
 ### Hosts recomendados

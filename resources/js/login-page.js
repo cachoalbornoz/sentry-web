@@ -1,3 +1,5 @@
+import { bootWhenReady } from './shared/page-boot';
+
 function init() {
     const passwordToggle = document.getElementById('toggle-password');
     const passwordInput = document.getElementById('password');
@@ -23,4 +25,4 @@ function init() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', init);
+bootWhenReady('__sentryLoginPageInitialized', init);

@@ -1,3 +1,5 @@
+import { escapeHtml } from './shared/html';
+
 function create({
     state,
     refs,
@@ -6,7 +8,6 @@ function create({
     objectiveRoute,
     getEstadoInfo,
     renderStateIcon,
-    escapeHtml,
     unwrapCollection,
     renderDatosTab,
     renderTable,
