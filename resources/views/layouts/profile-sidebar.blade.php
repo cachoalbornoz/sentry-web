@@ -12,9 +12,11 @@
     <div class="mt-3 text-center">
         <span class="inline-block rounded border border-slate-500 px-2 py-1 text-xs text-slate-200">{{ $rol }}</span>
     </div>
-    <div class="mt-auto pt-8 pb-2 flex min-h-[190px] flex-col">
-        <a href="{{ route('debug') }}" class="block w-full rounded-none bg-slate-500 px-4 py-3 text-left text-sm text-white hover:bg-slate-400">Ver Perfil</a>
-        <form method="POST" action="{{ route('logout') }}" class="js-logout-form mt-auto">
+    <div class="mt-6 pt-4 pb-2 flex flex-col gap-4">
+        <a href="{{ route('debug') }}" class="profile-view-btn mx-auto block w-full max-w-[220px] rounded-md px-4 py-3 text-center text-sm font-medium text-white">
+            Ver Perfil
+        </a>
+        <form method="POST" action="{{ route('logout') }}" class="js-logout-form">
             @csrf
             <button type="submit" class="profile-logout-btn js-logout-btn mx-auto block w-full max-w-[220px] rounded-md px-4 py-3 text-center text-sm font-medium text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-[#dc2626]">
                 <span class="js-logout-label">Cerrar sesión</span>

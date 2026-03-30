@@ -62,25 +62,15 @@ function renderGlobalCriticalAlerts(alerts, dashboardUrl) {
     syncGlobalCriticalAlertsWithSound(alerts);
 }
 
-function buildCriticalAlerts(objetivos, eventos, hasObjetivoScope, allowedObjetivoIds) {
-    const allowedSet = new Set(
-        (Array.isArray(allowedObjetivoIds) ? allowedObjetivoIds : [])
-            .map((id) => Number(id))
-            .filter((id) => Number.isFinite(id) && id > 0)
-    );
-    const isAllowed = (objetivoId) => {
-        if (!hasObjetivoScope) return true;
-        return allowedSet.has(Number(objetivoId || 0));
-    };
-
+function buildCriticalAlerts(objetivos, eventos) {
     const objetivosConEvento = new Set(
         (eventos || [])
             .map((event) => getEventoObjetivoId(event))
-            .filter((id) => Number.isFinite(id) && id > 0 && isAllowed(id))
+            .filter((id) => Number.isFinite(id) && id > 0)
     );
 
     const objetivosCriticos = (objetivos || []).filter(
-        (item) => String(item?.estado || '').toUpperCase() === 'CRITICO' && isAllowed(item?.id)
+        (item) => String(item?.estado || '').toUpperCase() === 'CRITICO'
     );
 
     return objetivosCriticos
@@ -101,8 +91,6 @@ function initGlobalCriticalAlerts() {
         eventosUrl,
         loginUrl,
         dashboardUrl,
-        hasObjetivoScope,
-        allowedObjetivoIds,
     } = getLayoutConfig();
     if (!objetivosUrl || !eventosUrl) return;
 
@@ -132,7 +120,7 @@ function initGlobalCriticalAlerts() {
 
             const objetivos = Array.isArray(objetivosRes.data?.data) ? objetivosRes.data.data : [];
             const eventos = Array.isArray(eventosRes.data) ? eventosRes.data : [];
-            const alerts = buildCriticalAlerts(objetivos, eventos, hasObjetivoScope, allowedObjetivoIds);
+            const alerts = buildCriticalAlerts(objetivos, eventos);
             renderGlobalCriticalAlerts(alerts, dashboardUrl);
         } catch (_) {
             renderGlobalCriticalAlerts([], dashboardUrl);

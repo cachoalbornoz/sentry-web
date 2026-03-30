@@ -38,6 +38,7 @@ return [
     'sentry_api' => [
         'base_url' => env('SENTRY_API_BASE_URL'),
         'cedulacion_batch_size' => max(1, (int) env('SENTRY_CEDULACION_BATCH_SIZE', 1)),
+        'scope_refresh_seconds' => max(1, (int) env('SENTRY_SCOPE_REFRESH_SECONDS', 3)),
     ],
 
     'stadiamaps' => [

@@ -117,7 +117,12 @@ Ejemplo de payload:
   - la fuente de verdad del filtro de visibilidad vive en API (`objetivos_alcanzables_id`),
   - la web consume payload filtrado y agrega validación defensiva para evitar mostrar
     objetivos/eventos fuera de alcance si el contrato llega incompleto en una transición
-    de ramas.
+    de ramas,
+  - `EnsureApiToken` refresca `api_user` desde `/me` para rutas `/x/*`, de modo que
+    cambios de asociación/desasociación de objetivos se reflejen en caliente sin relogin
+    obligatorio,
+  - en `Inicio` se agregó refresco periódico de datos para que nuevos objetivos asociados
+    aparezcan también en el mapa sin requerir `Ctrl+F5`.
 - Escenario sin alcance:
   - si el usuario no tiene objetivos alcanzables, `Inicio` y `Objetivos` muestran estado
     vacío funcional (sin error bloqueante).

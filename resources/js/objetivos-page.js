@@ -55,27 +55,19 @@ function init(config) {
         detailsById: {},
         criticalAlerts: [],
     };
-    const allowedObjetivoIds = new Set(
-        (Array.isArray(resolvedConfig.allowedObjetivoIds) ? resolvedConfig.allowedObjetivoIds : [])
-            .map((id) => Number(id))
-            .filter((id) => Number.isFinite(id) && id > 0)
-    );
+    // El backend ya filtra por alcance dinámico; evitamos scope local estático.
 
     function isObjetivoAllowed(objetivoId) {
-        const id = Number(objetivoId || 0);
-        if (!resolvedConfig.hasObjetivoScope) return true;
-        return allowedObjetivoIds.has(id);
+        return Number(objetivoId || 0) > 0;
     }
 
     function filterObjetivosByScope(items) {
         if (!Array.isArray(items)) return [];
-        if (!resolvedConfig.hasObjetivoScope) return items;
         return items.filter((item) => isObjetivoAllowed(item?.id));
     }
 
     function filterEventosByScope(items) {
         if (!Array.isArray(items)) return [];
-        if (!resolvedConfig.hasObjetivoScope) return items;
         return items.filter((event) => isObjetivoAllowed(getEventoObjetivoId(event)));
     }
 

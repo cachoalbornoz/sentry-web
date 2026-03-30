@@ -11,6 +11,15 @@
     line-height: 1.1;
 }
 
+.profile-view-btn {
+    background: #64748b;
+    border: 1px solid rgba(226, 232, 240, 0.35);
+}
+
+.profile-view-btn:hover {
+    background: #718198;
+}
+
 .profile-logout-btn {
     background: #dc2626;
     border: 1px solid rgba(254, 202, 202, .35);

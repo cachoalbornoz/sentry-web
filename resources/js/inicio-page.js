@@ -28,12 +28,8 @@ function init() {
     const USE_STADIA_BASEMAP = Boolean(config.useStadiaBasemap);
     const CONTACTOS_ROUTE_TEMPLATE = config.contactosRouteTemplate || '';
     const OBJETIVO_DETALLE_ROUTE_TEMPLATE = config.objetivoDetalleRouteTemplate || '';
-    const HAS_OBJETIVO_SCOPE = Boolean(config.hasObjetivoScope);
-    const ALLOWED_OBJETIVO_IDS = new Set(
-        (Array.isArray(config.allowedObjetivoIds) ? config.allowedObjetivoIds : [])
-            .map((id) => Number(id))
-            .filter((id) => Number.isFinite(id) && id > 0)
-    );
+    // El backend ya filtra por alcance en caliente; no usamos una lista local
+    // fija para evitar quedarnos con permisos "congelados" del login.
 
     const state = {
         eventos: filterEventosByScope(INITIAL_EVENTOS),
@@ -57,19 +53,15 @@ function init() {
     };
 
     function isObjetivoAllowed(objetivoId) {
-        const id = Number(objetivoId || 0);
-        if (!HAS_OBJETIVO_SCOPE) return true;
-        return ALLOWED_OBJETIVO_IDS.has(id);
+        return Number(objetivoId || 0) > 0;
     }
 
     function filterObjetivosByScope(objetivos) {
-        if (!HAS_OBJETIVO_SCOPE) return Array.isArray(objetivos) ? objetivos : [];
         return (Array.isArray(objetivos) ? objetivos : [])
             .filter((o) => isObjetivoAllowed(o?.id));
     }
 
     function filterEventosByScope(eventos) {
-        if (!HAS_OBJETIVO_SCOPE) return Array.isArray(eventos) ? eventos : [];
         return (Array.isArray(eventos) ? eventos : [])
             .filter((e) => isObjetivoAllowed(getEventoObjetivoId(e)));
     }
@@ -914,8 +906,13 @@ function init() {
                 const id = Number(o?.id || 0);
                 if (!id) return;
                 const url = OBJETIVO_DETALLE_ROUTE_TEMPLATE.replace('__OBJETIVO__', String(id));
-                const detail = await fetchJsonWithTimeout(url, {}, 5000).then((r) => r.ok ? r.data : null).catch(() => null);
-                if (!detail) return;
+                const detailPayload = await fetchJsonWithTimeout(url, {}, 5000)
+                    .then((r) => (r.ok ? r.data : null))
+                    .catch(() => null);
+                if (!detailPayload) return;
+                const detail = (detailPayload && typeof detailPayload === 'object' && detailPayload.data && typeof detailPayload.data === 'object')
+                    ? detailPayload.data
+                    : detailPayload;
                 const idx = state.objetivos.findIndex((x) => Number(x.id) === id);
                 if (idx >= 0) {
                     state.objetivos[idx] = normalizeObjetivo({ ...state.objetivos[idx], ...detail });
@@ -1011,6 +1008,11 @@ function init() {
         initMap();
         Promise.allSettled([refreshObjetivos(), refreshEventos()]);
         startSSE();
+        // Refresco periódico de datos filtrados por alcance para reflejar
+        // cambios de permisos en caliente sin requerir Ctrl+F5.
+        window.setInterval(() => {
+            void Promise.allSettled([refreshObjetivos(), refreshEventos()]);
+        }, 5000);
     });
 }
 
