@@ -1,16 +1,26 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\CrudHubController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ObjetivoController;
+use App\Http\Controllers\Admin\SettingsPageController;
 use App\Http\Controllers\AuthWebController;
 use App\Http\Controllers\DashboardWebController;
 use App\Http\Controllers\HomeWebController;
 use App\Http\Controllers\ApiProxyController;
 use App\Http\Controllers\SseProxyController;
 use App\Http\Controllers\TileProxyController;
+use App\Support\AdminRole;
 
-Route::get('/', function () {
+Route::get('/', function (Request $request) {
+    if (AdminRole::isElevated($request->session()->get('api_user'))) {
+        return redirect()->route('admin.home');
+    }
+
     return redirect()->route('dashboard');
-});
+})->middleware('api.token');
 
 Route::get('/login', [AuthWebController::class, 'showLogin'])->name('login.form');
 Route::post('/login', [AuthWebController::class, 'login'])->name('login.submit');
@@ -20,9 +30,29 @@ Route::get('/dashboard', HomeWebController::class)
     ->middleware('api.token')
     ->name('dashboard');
 
-Route::view('/objetivos', 'objetivos')
-    ->middleware('api.token')
-    ->name('objetivos');
+Route::get('/objetivos', function (Request $request) {
+    if (AdminRole::isElevated($request->session()->get('api_user'))) {
+        return redirect()->route('admin.home');
+    }
+
+    return view('objetivos');
+})->middleware('api.token')->name('objetivos');
+
+Route::prefix('admin')
+    ->middleware(['api.token', 'admin.elevated'])
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/', DashboardController::class)->name('home');
+        Route::get('/crud', CrudHubController::class)->name('crud');
+        Route::get('/settings', SettingsPageController::class)->name('settings');
+        Route::get('/objetivos', [ObjetivoController::class, 'index'])->name('objetivos.index');
+        Route::get('/objetivos/nuevo', [ObjetivoController::class, 'create'])->name('objetivos.create');
+        Route::post('/objetivos', [ObjetivoController::class, 'store'])->name('objetivos.store');
+        Route::get('/objetivos/{objetivo}', [ObjetivoController::class, 'show'])->name('objetivos.show');
+        Route::get('/objetivos/{objetivo}/editar', [ObjetivoController::class, 'edit'])->name('objetivos.edit');
+        Route::put('/objetivos/{objetivo}', [ObjetivoController::class, 'update'])->name('objetivos.update');
+        Route::delete('/objetivos/{objetivo}', [ObjetivoController::class, 'destroy'])->name('objetivos.destroy');
+    });
 
 Route::get('/debug', DashboardWebController::class)
     ->middleware('api.token')

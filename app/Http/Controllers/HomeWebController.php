@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\SentryApiClient;
+use App\Support\AdminRole;
 use Illuminate\Http\Request;
 
 class HomeWebController extends Controller
@@ -47,6 +48,10 @@ class HomeWebController extends Controller
 
     public function __invoke(Request $request, SentryApiClient $api)
     {
+        if (AdminRole::isElevated($request->session()->get('api_user'))) {
+            return redirect()->route('admin.home');
+        }
+
         $token = (string) $request->session()->get('api_token');
 
         try {

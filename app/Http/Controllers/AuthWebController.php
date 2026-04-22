@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\SentryApiClient;
+use App\Support\AdminRole;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
@@ -55,6 +56,10 @@ class AuthWebController extends Controller
         $request->session()->put('api_user', $result['user']);
         $request->session()->put('api_token_expires_at', $result['token_expires_at']);
         $request->session()->regenerate();
+
+        if (AdminRole::isElevated($result['user'] ?? null)) {
+            return redirect()->route('admin.home');
+        }
 
         return redirect()->route('dashboard');
     }

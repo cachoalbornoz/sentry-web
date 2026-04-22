@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'api.token' => \App\Http\Middleware\EnsureApiToken::class,
+            'admin.elevated' => \App\Http\Middleware\EnsureElevatedAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -229,8 +229,11 @@
     color: #fff;
     box-shadow: 0 30px 80px rgba(0, 0, 0, .45);
     max-height: calc(100vh - 80px);
+    min-height: 0;
     display: flex;
     flex-direction: column;
+    /* Evita que el contenido (p. ej. tabla de Zonas) empuje el diálogo fuera de la ventana. */
+    overflow: hidden;
 }
 
 .objetivo-modal-header {
@@ -239,6 +242,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
+    flex-shrink: 0;
 }
 
 .objetivo-modal-title-wrap {
@@ -275,6 +279,7 @@
     gap: 0;
     padding: 0 22px;
     border-bottom: 1px solid #424242;
+    flex-shrink: 0;
 }
 
 .objetivo-modal-tab {
@@ -296,13 +301,18 @@
     background: #343434;
     flex: 1 1 auto;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .objetivo-tab-panel {
-    min-height: 260px;
-    height: 100%;
-    max-height: none;
-    overflow: auto;
+    /* Ocupa el espacio restante del modal y hace scroll interno (listas largas, Zonas). */
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .objetivo-section-title {

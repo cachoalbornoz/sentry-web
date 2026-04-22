@@ -87,7 +87,6 @@
                             </svg>
                             <span id="group-eventos-label">Agrupar</span>
                         </button>
-                        <a class="underline underline-offset-4 hover:text-slate-200" href="{{ route('debug') }}">Debug</a>
                     </div>
                 </div>
 
@@ -285,4 +284,3 @@
     <div id="inicio-page-config" hidden
          data-config='@json($inicioPageConfig)'></div>
 @endsection
-

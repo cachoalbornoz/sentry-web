@@ -143,5 +143,50 @@ class SentryApiClient
             ->throw()
             ->json();
     }
+
+    public function clientes(string $token): array
+    {
+        return $this->request($token)
+            ->get('/clientes')
+            ->throw()
+            ->json();
+    }
+
+    public function jurisdicciones(string $token): array
+    {
+        return $this->request($token)
+            ->get('/jurisdicciones')
+            ->throw()
+            ->json();
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function createObjetivo(string $token, array $payload): array
+    {
+        return $this->request($token)
+            ->post('/objetivos', $payload)
+            ->throw()
+            ->json();
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function updateObjetivo(string $token, int $objetivoId, array $payload): array
+    {
+        return $this->request($token)
+            ->patch("/objetivos/{$objetivoId}", $payload)
+            ->throw()
+            ->json();
+    }
+
+    public function deleteObjetivo(string $token, int $objetivoId): void
+    {
+        $this->request($token)
+            ->delete("/objetivos/{$objetivoId}")
+            ->throw();
+    }
 }
 
