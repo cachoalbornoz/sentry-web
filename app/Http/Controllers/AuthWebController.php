@@ -27,28 +27,28 @@ class AuthWebController extends Controller
             $result = $api->login($data['email'], $data['password']);
         } catch (ConnectionException) {
             throw ValidationException::withMessages([
-                'email' => 'La API no responde en este momento. Intentá nuevamente.',
+                'email' => 'La API no responde en este momento. Intenta nuevamente.',
             ]);
         } catch (RequestException $e) {
             $status = $e->response?->status() ?? 0;
-            $msg = 'No se pudo iniciar sesión. Verificá credenciales o rol.';
+            $msg = 'No se pudo iniciar sesion. Verifica credenciales o rol.';
             if ($status === 401 || $status === 422) {
-                $msg = 'Credenciales inválidas.';
+                $msg = 'Credenciales invalidas.';
             } elseif ($status >= 500) {
-                $msg = 'La API devolvió un error interno. Intentá nuevamente.';
+                $msg = 'La API devolvio un error interno. Intenta nuevamente.';
             }
             throw ValidationException::withMessages([
                 'email' => $msg,
             ]);
         } catch (\Throwable $e) {
             throw ValidationException::withMessages([
-                'email' => 'No se pudo iniciar sesión. Verificá credenciales o rol.',
+                'email' => 'No se pudo iniciar sesion. Verifica credenciales o rol.',
             ]);
         }
 
         if (($result['token'] ?? '') === '') {
             throw ValidationException::withMessages([
-                'email' => 'La API no devolvió token de sesión.',
+                'email' => 'La API no devolvio token de sesion.',
             ]);
         }
 
